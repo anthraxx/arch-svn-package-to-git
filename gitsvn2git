@@ -1,0 +1,56 @@
+#!/bin/sh -e
+
+shopt -s extglob
+export LC_ALL=C
+
+RED=$(tput setaf 1)
+GREEN=$(tput setaf 2)
+YELLOW=$(tput setaf 3)
+BLUE=$(tput setaf 4)
+BOLD=$(tput bold)
+ALL_OFF=$(tput sgr0)
+
+msg() {
+	local mesg=$1; shift
+	printf "${BOLD}${GREEN}==>${ALL_OFF}${BOLD} ${mesg}${ALL_OFF}\n" "$@" >&2
+}
+
+msg2() {
+	local mesg=$1; shift
+	printf "${BOLD}${BLUE}  ->${ALL_OFF}${BOLD} ${mesg}${ALL_OFF}\n" "$@" >&2
+}
+
+if [[ ${#} -lt 2 ]]; then
+	echo "Usage: ${0} INPUT_GIT [PACKAGE]..."
+	exit 1
+fi
+
+INPUT="${1}"
+TARGET="${2}"
+shift 2
+PACKAGES="${@}"
+
+if [ -z "${PACKAGES}" ]; then
+	PACKAGES=$(ls "${INPUT}")
+fi
+
+msg "Using input directory: ${INPUT}"
+msg "Using target directory: ${TARGET}"
+mkdir -p "${TARGET}"
+
+for PACKAGE in ${PACKAGES}; do
+	msg "Converting ${PACKAGE}..."
+
+	msg2 "Cloning parent repository..."
+	git clone "${INPUT}" "${TARGET}/${PACKAGE}"
+
+	msg2 "Filter branch..."
+	pushd "${TARGET}/${PACKAGE}" >/dev/null
+	git filter-branch --prune-empty --subdirectory-filter "${PACKAGE}/trunk" HEAD
+
+	msg2 "Cleaning up..."
+	git remote rm origin
+	git gc --aggressive
+
+	popd >/dev/null
+done
