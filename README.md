@@ -45,3 +45,9 @@ Additionally it performs some garbage collection and history/content rewrite.
     gitsvn2git repos/community community-converted capstone radare2
 
 
+##### Parallelize:
+
+    cd repos/community
+    parallel gitsvn2git . ../../community-converted ::: *
+
+
