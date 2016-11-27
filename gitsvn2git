@@ -1,7 +1,8 @@
 #!/bin/sh -e
-
 shopt -s extglob
 export LC_ALL=C
+
+BASE=$(realpath $(dirname "$0"))
 
 RED=$(tput setaf 1)
 GREEN=$(tput setaf 2)
@@ -21,7 +22,7 @@ msg2() {
 }
 
 if [[ ${#} -lt 2 ]]; then
-	echo "Usage: ${0} INPUT_GIT [PACKAGE]..."
+	echo "Usage: ${0} INPUT_GIT TARGET_DIR [PACKAGE]..."
 	exit 1
 fi
 
@@ -41,12 +42,21 @@ mkdir -p "${TARGET}"
 for PACKAGE in ${PACKAGES}; do
 	msg "Converting ${PACKAGE}..."
 
+	if [ -d "${TARGET}/${PACKAGE}" ]; then
+		msg2 "Removing old checkout..."
+		rm -rf ./"${TARGET}/${PACKAGE}"
+	fi
+
 	msg2 "Cloning parent repository..."
 	git clone "${INPUT}" "${TARGET}/${PACKAGE}"
 
-	msg2 "Filter branch..."
+	msg2 "Filter subdirectory..."
 	pushd "${TARGET}/${PACKAGE}" >/dev/null
 	git filter-branch --prune-empty --subdirectory-filter "${PACKAGE}/trunk" HEAD
+
+	msg2 "Rewrite history..."
+	git filter-branch --commit-filter "$(${BASE}/git-rewrite-author)" \
+		--msg-filter "sed -n '/git-svn-id/{n;x;d;};x;1d;p;\${x;p;}'" -f HEAD
 
 	msg2 "Cleaning up..."
 	git remote rm origin
