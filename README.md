@@ -47,7 +47,6 @@ Additionally it performs some garbage collection and history/content rewrite.
 
 ##### Parallelize:
 
-    cd repos/community
-    parallel gitsvn2git . ../../community-converted ::: *
+    parallel gitsvn2git repos/community community-converted ::: repos/community/*
 
 
