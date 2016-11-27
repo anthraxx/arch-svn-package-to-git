@@ -49,14 +49,15 @@ for PACKAGE in ${PACKAGES}; do
 
 	msg2 "Cloning parent repository..."
 	git clone "${INPUT}" "${TARGET}/${PACKAGE}"
+	pushd "${TARGET}/${PACKAGE}" >/dev/null
 
 	msg2 "Filter subdirectory..."
-	pushd "${TARGET}/${PACKAGE}" >/dev/null
 	git filter-branch --prune-empty --subdirectory-filter "${PACKAGE}/trunk" HEAD
 
 	msg2 "Rewrite history..."
 	git filter-branch --commit-filter "$(${BASE}/git-rewrite-author)" \
-		--msg-filter "sed -n '/git-svn-id/{n;x;d;};x;1d;p;\${x;p;}'" -f HEAD
+		--msg-filter "sed -n '/git-svn-id/{n;x;d;};x;1d;p;\${x;p;}'" \
+		--tree-filter "sed '/^# \$Id/d' -i PKGBUILD" -f HEAD
 
 	msg2 "Cleaning up..."
 	git remote rm origin
