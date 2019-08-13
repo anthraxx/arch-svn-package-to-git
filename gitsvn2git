@@ -58,7 +58,7 @@ for PACKAGE in ${PACKAGES}; do
 	msg2 "Rewrite history..."
 	git filter-branch --commit-filter "$(${BASE}/git-rewrite-author)" \
 		--msg-filter "sed -n '/git-svn-id/{n;x;d;};x;1d;p;\${x;p;}'" \
-		--tree-filter "sed '/^# \$Id/d' -i PKGBUILD" -f HEAD
+		--tree-filter "test -f PKGBUILD && sed '/^# \$Id/d' -i PKGBUILD || true" -f HEAD
 
 	msg2 "Cleaning up..."
 	git remote rm origin
