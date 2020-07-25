@@ -1,71 +1,353 @@
-#!/bin/sh -e
-shopt -s extglob
-export LC_ALL=C
+#!/bin/env python
+import hashlib
+import os
+import re
+import shutil
+import sys
+from typing import List, Tuple
+from pathlib import Path
+from subprocess import CalledProcessError, PIPE, run
 
-BASE=$(realpath $(dirname "$0"))
 
-RED=$(tput setaf 1)
-GREEN=$(tput setaf 2)
-YELLOW=$(tput setaf 3)
-BLUE=$(tput setaf 4)
-BOLD=$(tput bold)
-ALL_OFF=$(tput sgr0)
+class Style:
+    """Common console styles."""
 
-msg() {
-	local mesg=$1; shift
-	printf "${BOLD}${GREEN}==>${ALL_OFF}${BOLD} ${mesg}${ALL_OFF}\n" "$@" >&2
-}
+    RESET = "\033[0m"
+    BOLD = "\033[1m"
+    RED = "\033[31m"
+    GREEN = "\033[32m"
+    YELLOW = "\033[33m"
+    BLUE = "\033[34m"
 
-msg2() {
-	local mesg=$1; shift
-	printf "${BOLD}${BLUE}  ->${ALL_OFF}${BOLD} ${mesg}${ALL_OFF}\n" "$@" >&2
-}
 
-if [[ ${#} -lt 2 ]]; then
-	echo "Usage: ${0} INPUT_GIT TARGET_DIR [PACKAGE]..."
-	exit 1
-fi
+class Release:
+    """Release information.
 
-INPUT="${1}"
-TARGET="${2}"
-shift 2
-PACKAGES="${@}"
+    Attributes:
+        tag (str): release tag.
+        file_hash (str): PKGBUILD file hash.
+        input_commit (str): commit of input git repository.
+    """
 
-if [ -z "${PACKAGES}" ]; then
-	PACKAGES="${INPUT}"/*
-fi
+    def __init__(self, tag: str, file_hash: str, input_commit: str):
+        self.tag: str = tag
+        self.file_hash: str = file_hash
+        self.input_commit: str = input_commit
 
-msg "Using input directory: ${INPUT}"
-msg "Using target directory: ${TARGET}"
-mkdir -p "${TARGET}"
+    def __repr__(self):
+        return str(
+            {
+                "tag": self.tag,
+                "file_hash": self.file_hash,
+                "input_commit": self.input_commit,
+            }
+        )
 
-for PACKAGE in ${PACKAGES}; do
-	PACKAGE=$(basename "${PACKAGE}")
-	msg "Converting ${PACKAGE}..."
 
-	if [ -d "${TARGET}/${PACKAGE}" ]; then
-		msg2 "Removing old checkout..."
-		rm -rf ./"${TARGET}/${PACKAGE}"
-	fi
+def msg(message: str):
+    """Pretty format message.
 
-	msg2 "Cloning parent repository..."
-	git clone "${INPUT}" "${TARGET}/${PACKAGE}"
-	pushd "${TARGET}/${PACKAGE}" >/dev/null
+    Args:
+        message (str): message to format.
+    """
+    s = Style()
+    print(f"{s.BOLD}{s.GREEN}==>{s.RESET}{s.BOLD} {message}{s.RESET}")
 
-	msg2 "Filter subdirectory..."
-	git filter-branch --prune-empty --subdirectory-filter "${PACKAGE}/trunk" HEAD
 
-	msg2 "Rewrite history..."
-	git filter-branch --commit-filter "$(${BASE}/git-rewrite-author)" \
-		--msg-filter "sed -n '/git-svn-id/{n;x;d;};x;1d;p;\${x;p;}'" \
-		--tree-filter "test -f PKGBUILD && sed '/^# \$Id/d' -i PKGBUILD || true" -f HEAD
+def info(message: str):
+    """Pretty format message.
 
-	msg2 "Cleaning up..."
-	git remote rm origin
-	rm -rf .git/{refs/{original,remotes},logs}
-	git for-each-ref --format="%(refname)" refs/original | xargs -n1 --no-run-if-empty git update-ref -d
-	git -c gc.reflogExpire=0 -c gc.reflogExpireUnreachable=0 -c gc.rerereresolved=0 \
-		-c gc.rerereunresolved=0 -c gc.pruneExpire=now gc --aggressive
+    Args:
+        message (str): message to format.
+    """
+    s = Style()
+    print(f"{s.BOLD}{s.BLUE}  ->{s.RESET}{s.BOLD} {message}{s.RESET}")
 
-	popd >/dev/null
-done
+
+def error(error: str):
+    """Pretty format error message.
+
+    Args:
+        error (str): message to format.
+    """
+    s = Style()
+    print(f"{s.BOLD}{s.RED}==>{s.RESET}{s.BOLD} {error}{s.RESET}")
+
+
+def parse_input() -> Tuple[Path, Path, List[str]]:
+    """Parse input arguments.
+
+    Returns:
+        tuple(Path, Path, list): input_dir, target_dir and list of packages.
+    """
+    if len(sys.argv) < 3:
+        print(f"Usage: {__file__} INPUT_DIR TARGET_DIR [PACKAGE(s)]...")
+        exit()
+
+    input_dir = Path(sys.argv[1])
+    if not input_dir.exists() or not input_dir.is_dir():
+        error(f"Input directory not found: {input_dir}")
+        exit(1)
+
+    target_dir = Path(sys.argv[2])
+    target_dir.mkdir(exist_ok=True, parents=True)
+
+    packages = []
+    if len(sys.argv) > 3:
+        for package in sys.argv[3:]:
+            packages.append(package)
+            package_dir = input_dir / package
+            if not package_dir.exists():
+                error(f"Package directory not found: {package_dir}")
+    else:
+        packages = [p.name for p in input_dir.glob("*") if p.is_dir()]
+
+    return input_dir, target_dir, packages
+
+
+def clone_repository(input_dir: Path, package_dir: Path):
+    """Clone input repository to target_dir.
+
+    Args:
+        input_dir (Path): input repository directory.
+        package_dir (Path): package directory.
+    """
+    info("Cloning parent repository...")
+    try:
+        run(f"git clone {input_dir} {package_dir}", check=True, shell=True)
+    except CalledProcessError as e:
+        error(f"Error cloning repository to {target_dir}...")
+        raise e
+
+
+def filter_subdirectory(package_dir: Path, subdirectory: str):
+    """Filter subdirectory in the package repository.
+
+    Args:
+        package_dir (Path): package directory.
+        subdirectory (str): subdirectory in the repository.
+    """
+    subdirectory = (package_dir / subdirectory).relative_to(package_dir)
+    info(f"Filter subdirectory '{subdirectory}'...")
+    try:
+        run(
+            (
+                "git filter-branch -f --prune-empty --subdirectory-filter"
+                f" {subdirectory} HEAD"
+            ),
+            check=True,
+            shell=True,
+            cwd=package_dir,
+        )
+    except CalledProcessError as e:
+        error(f"Error filtering subdirectory '{subdirectory}'...")
+        raise e
+
+
+def get_tag_from_pkgbuild(pkgbuild: str):
+    """Extract tag from the PKGBUILD content.
+
+    Args:
+        pkgbuild (str): PKGBUILD content.
+    Returns:
+        str: release tag formatted.
+    """
+    pkgver = re.search("pkgver=(.*)", pkgbuild)[0].lstrip("pkgver=")
+    pkgrel = re.search("pkgrel=(.*)", pkgbuild)[0].lstrip("pkgrel=")
+    return f"{pkgver}-{pkgrel}"
+
+
+def get_pkgbuild(package_dir: Path, file: str, commit: str):
+    """Get PKGBUILD content from the path."""
+    pkgbuild_file = next(package_dir.glob(file))
+    pkgbuild_file = pkgbuild_file.relative_to(package_dir)
+    p = run(
+        f"git show {commit}:{pkgbuild_file}",
+        cwd=package_dir,
+        shell=True,
+        stdout=PIPE,
+        stderr=PIPE,
+    )
+    if p.returncode != 0:
+        print(f"Error getting PKGBUILD from {commit} - Skipping")
+        return None
+    return p.stdout.decode()
+
+
+def get_releases(package_dir: Path, suffix: str = "./repos"):
+    """Filter subdirectory in the package repository.
+
+    Args:
+        package_dir (Path): package directory.
+    Returns:
+        List[Release]: a list of the releases.
+    """
+    info("Parsing releases...")
+    try:
+        releases = []
+        p = run(
+            f"git log --pretty='%h' --grep=archrelease {suffix}",
+            check=True,
+            cwd=package_dir,
+            shell=True,
+            stdout=PIPE,
+        )
+        commits = p.stdout.decode().splitlines()
+        for commit in commits:
+            file = f"{suffix}/*/PKGBUILD"
+            pkgbuild = get_pkgbuild(package_dir, file, commit)
+            if not pkgbuild:
+                continue
+
+            md5 = hashlib.md5()
+            md5.update(pkgbuild.encode('utf-8'))
+            file_hash = md5.hexdigest()
+
+            tag = get_tag_from_pkgbuild(pkgbuild)
+
+            release = Release(tag, file_hash, commit)
+            releases.append(release)
+        return releases
+    except CalledProcessError as e:
+        error(f"Error getting releases...")
+        raise e
+
+
+def rewrite_history(package_dir: Path):
+    """Rewrite repository history and clean messages.
+
+    Args:
+        package_dir (Path): package directory.
+    """
+    info("Rewrite history...")
+    try:
+        rewrite_script = (Path.cwd() / "git-rewrite-author").absolute()
+        run(
+            (
+                "git filter-branch"
+                f' --commit-filter "$({rewrite_script})"'
+                " --msg-filter"
+                " \"sed -n '/git-svn-id/{n;x;d;};x;1d;p;\\${x;p;}'\""
+                " --tree-filter"
+                " \"test -f PKGBUILD && sed '/^# \\$Id/d' -i PKGBUILD || true\""
+                " -f HEAD"
+            ),
+            check=True,
+            cwd=package_dir,
+            shell=True,
+        )
+    except CalledProcessError as e:
+        error(f"Error rewriting history...")
+        raise e
+
+
+def tag_releases(package_dir: Path, releases: List[Release]):
+    """Generate git tags from the release objects.
+
+    Args:
+        package_dir (Path): package directory.
+        releases (List[Release]): list of releases.
+    """
+    info("Tagging releases...")
+    tag_map = {}
+    for release in releases:
+        tag_map[release.file_hash] = release.tag
+
+    print(tag_map)
+    try:
+        p = run(
+            "git log --pretty='%h'",
+            check=True,
+            cwd=package_dir,
+            shell=True,
+            stdout=PIPE,
+        )
+        commits = p.stdout.decode().splitlines()
+        for commit in commits:
+            pkgbuild = get_pkgbuild(package_dir, "PKGBUILD", commit)
+            if not pkgbuild:
+                continue
+
+            print(commit)
+            md5 = hashlib.md5()
+            md5.update(pkgbuild.encode('utf-8'))
+            file_hash = md5.hexdigest()
+
+            try:
+                tag = tag_map[file_hash]
+            except KeyError:
+                continue
+            run(
+                f"git tag {tag} -m 'Package release {tag}'",
+                check=True,
+                cwd=package_dir,
+                shell=True,
+            )
+    except CalledProcessError as e:
+        error(f"Error tagging releases...")
+        raise e
+
+
+def clean_up(package_dir: Path):
+    """Clean up repository and run garbage collector.
+
+    Args:
+        package_dir (Path): package directory.
+    """
+    info("Cleaning up...")
+    try:
+        run("git remote rm origin", check=True, cwd=package_dir, shell=True)
+        shutil.rmtree(package_dir / ".git/refs/original")
+        shutil.rmtree(package_dir / ".git/refs/remotes")
+        shutil.rmtree(package_dir / ".git/logs")
+
+        run(
+            (
+                "git for-each-ref"
+                ' --format="%(refname)" refs/original'
+                " | xargs -n1 --no-run-if-empty git update-ref -d"
+            ),
+            check=True,
+            cwd=package_dir,
+            shell=True,
+        )
+        run(
+            (
+                "git -c gc.reflogExpire=0 -c gc.reflogExpireUnreachable=0"
+                " -c gc.rerereresolved=0 -c gc.rerereunresolved=0"
+                " -c gc.pruneExpire=now gc --aggressive"
+            ),
+            check=True,
+            cwd=package_dir,
+            shell=True,
+        )
+
+    except CalledProcessError as e:
+        error(f"Error cleaning up...")
+        raise e
+
+
+if __name__ == "__main__":
+    os.environ["FILTER_BRANCH_SQUELCH_WARNING"] = "1"
+    input_dir, target_dir, packages = parse_input()
+    msg(f"Using input directory: {input_dir}")
+    msg(f"Using target directory: {target_dir}")
+
+    for package in packages:
+        msg(f"Converting {package}...")
+
+        package_dir = target_dir / package
+        if package_dir.exists():
+            info("Removing old checkout...")
+            shutil.rmtree(package_dir)
+
+        try:
+            clone_repository(input_dir, package_dir)
+            filter_subdirectory(package_dir, package)
+            releases = get_releases(package_dir)
+            filter_subdirectory(package_dir, "trunk")
+            rewrite_history(package_dir)
+            tag_releases(package_dir, releases)
+            clean_up(package_dir)
+        except CalledProcessError:
+            break
