@@ -128,7 +128,7 @@ def filter_subdirectory(package_dir: Path, subdirectory: str):
         subdirectory (str): subdirectory in the repository.
     """
     subdirectory = (package_dir / subdirectory).relative_to(package_dir)
-    info(f"Filter subdirectory '{subdirectory}'...")
+    info(f"Filtering subdirectory '{subdirectory}'...")
     try:
         run(
             (
@@ -158,7 +158,16 @@ def get_tag_from_pkgbuild(pkgbuild: str):
 
 
 def get_pkgbuild(package_dir: Path, file: str, commit: str):
-    """Get PKGBUILD content from the path."""
+    """Get PKGBUILD content in an specific commit.
+
+    Args:
+        package_dir (Path): package directory.
+        file (str): PKGBUILD file.
+        commit (str): commit hash.
+
+    Returns:
+        str: PKGBUILD content.
+    """
     pkgbuild_file = next(package_dir.glob(file))
     pkgbuild_file = pkgbuild_file.relative_to(package_dir)
     p = run(
@@ -171,14 +180,24 @@ def get_pkgbuild(package_dir: Path, file: str, commit: str):
     if p.returncode != 0:
         print(f"Error getting PKGBUILD from {commit} - Skipping")
         return None
-    return p.stdout.decode()
+    pkgbuild = p.stdout.decode()
+    # Remove svn '# $Id$' since this will cause a md5sum mismatch
+    pkgbuild = pkgbuild.strip('# $Id$\n')
+    return pkgbuild
 
 
-def get_releases(package_dir: Path, suffix: str = "./repos"):
-    """Filter subdirectory in the package repository.
+def get_releases(
+    package_dir: Path,
+    grep: str = "archrelease",
+    pkgbuild_file: str = "./repos/*/PKGBUILD",
+):
+    """Get releases from the PKGBUILD filtering commit messages.
 
     Args:
         package_dir (Path): package directory.
+        grep (str): string to be used in git grep.
+        pkgbuild_file (str): location of the PKGBUILD file to be used.
+
     Returns:
         List[Release]: a list of the releases.
     """
@@ -186,7 +205,7 @@ def get_releases(package_dir: Path, suffix: str = "./repos"):
     try:
         releases = []
         p = run(
-            f"git log --pretty='%h' --grep=archrelease {suffix}",
+            f"git log --pretty='%h' --grep='{grep}' .",
             check=True,
             cwd=package_dir,
             shell=True,
@@ -194,13 +213,11 @@ def get_releases(package_dir: Path, suffix: str = "./repos"):
         )
         commits = p.stdout.decode().splitlines()
         for commit in commits:
-            file = f"{suffix}/*/PKGBUILD"
-            pkgbuild = get_pkgbuild(package_dir, file, commit)
+            pkgbuild = get_pkgbuild(package_dir, pkgbuild_file, commit)
             if not pkgbuild:
                 continue
 
-            md5 = hashlib.md5()
-            md5.update(pkgbuild.encode('utf-8'))
+            md5 = hashlib.md5(pkgbuild.encode("utf-8"))
             file_hash = md5.hexdigest()
 
             tag = get_tag_from_pkgbuild(pkgbuild)
@@ -253,7 +270,6 @@ def tag_releases(package_dir: Path, releases: List[Release]):
     for release in releases:
         tag_map[release.file_hash] = release.tag
 
-    print(tag_map)
     try:
         p = run(
             "git log --pretty='%h'",
@@ -263,14 +279,15 @@ def tag_releases(package_dir: Path, releases: List[Release]):
             stdout=PIPE,
         )
         commits = p.stdout.decode().splitlines()
+        # Reverse tagging order to left the tag in the latest commit
         for commit in commits:
             pkgbuild = get_pkgbuild(package_dir, "PKGBUILD", commit)
             if not pkgbuild:
                 continue
 
-            print(commit)
-            md5 = hashlib.md5()
-            md5.update(pkgbuild.encode('utf-8'))
+            tag = get_tag_from_pkgbuild(pkgbuild)
+
+            md5 = hashlib.md5(pkgbuild.encode("utf-8"))
             file_hash = md5.hexdigest()
 
             try:
@@ -278,7 +295,7 @@ def tag_releases(package_dir: Path, releases: List[Release]):
             except KeyError:
                 continue
             run(
-                f"git tag {tag} -m 'Package release {tag}'",
+                f"git tag -f {tag} {commit} -m 'Package release {tag}'",
                 check=True,
                 cwd=package_dir,
                 shell=True,
