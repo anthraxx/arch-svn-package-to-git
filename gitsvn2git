@@ -4,9 +4,11 @@ import os
 import re
 import shutil
 import sys
-from typing import List, Tuple
+
 from pathlib import Path
 from subprocess import CalledProcessError, PIPE, run
+from tempfile import NamedTemporaryFile
+from typing import List, Tuple
 
 
 class Style:
@@ -152,9 +154,29 @@ def get_tag_from_pkgbuild(pkgbuild: str):
     Returns:
         str: release tag formatted.
     """
-    pkgver = re.search("pkgver=(.*)", pkgbuild)[0].lstrip("pkgver=")
-    pkgrel = re.search("pkgrel=(.*)", pkgbuild)[0].lstrip("pkgrel=")
-    return f"{pkgver}-{pkgrel}"
+    # It needs to generate a temporary file to be parsed in bash since it got
+    # no direct access to PKGBUILD in the filesystem.
+    tmpfile = NamedTemporaryFile()
+    tmpfile.write(pkgbuild.encode("utf-8"))
+    tmpfile.flush()
+
+    p = run(
+        f"bash -c 'source {tmpfile.name} && echo -n $pkgver'",
+        check=True,
+        shell=True,
+        cwd=package_dir,
+        stdout=PIPE,
+        stderr=PIPE,
+    )
+    pkgver = p.stdout.decode()
+
+    pkgrel = re.search(r"pkgrel=(.*)", pkgbuild)[0].lstrip("pkgrel=")
+
+    if epoch := re.search(r"epoch=(\d*)", pkgbuild):
+        epoch = "@" + epoch[0].lstrip("epoch=")
+
+    tag = f"{pkgver}-{pkgrel}{epoch or ''}"
+    return tag
 
 
 def get_pkgbuild(package_dir: Path, file: str, commit: str):
@@ -182,7 +204,7 @@ def get_pkgbuild(package_dir: Path, file: str, commit: str):
         return None
     pkgbuild = p.stdout.decode()
     # Remove svn '# $Id$' since this will cause a md5sum mismatch
-    pkgbuild = pkgbuild.strip('# $Id$\n')
+    pkgbuild = pkgbuild.replace("# $Id$\n", "")
     return pkgbuild
 
 
@@ -338,7 +360,6 @@ def clean_up(package_dir: Path):
             cwd=package_dir,
             shell=True,
         )
-
     except CalledProcessError as e:
         error(f"Error cleaning up...")
         raise e
