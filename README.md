@@ -4,6 +4,10 @@ Arch Linux svn package to git converter
 Simple script that converts a git-svn checkout of a whole svn repository to separated per package git repositories.
 Additionally it performs some garbage collection and history/content rewrite.
 
+### Requirements:
+- Python 3.8
+- git-filter-repo (this package is in `community`)
+
 ### Rewrites:
 
 - Replace author name and e-mail via ```AUTHORS``` file

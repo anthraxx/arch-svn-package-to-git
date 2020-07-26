@@ -135,10 +135,7 @@ def filter_subdirectory(package_dir: Path, subdirectory: str):
     info(f"Filtering subdirectory '{subdirectory}'...")
     try:
         run(
-            (
-                "git filter-branch -f --prune-empty --subdirectory-filter"
-                f" {subdirectory} HEAD"
-            ),
+            f"git-filter-repo --subdirectory-filter {subdirectory}",
             check=True,
             shell=True,
             cwd=package_dir,
@@ -328,7 +325,6 @@ def tag_releases(package_dir: Path, releases: List[Release]):
     except CalledProcessError as e:
         error("Error tagging releases...")
         raise e
-    print(releases)
 
 
 def clean_up(package_dir: Path):
@@ -339,7 +335,6 @@ def clean_up(package_dir: Path):
     """
     info("Cleaning up...")
     try:
-        run("git remote rm origin", check=True, cwd=package_dir, shell=True)
         shutil.rmtree(package_dir / ".git/refs/original")
         shutil.rmtree(package_dir / ".git/refs/remotes")
         shutil.rmtree(package_dir / ".git/logs")
