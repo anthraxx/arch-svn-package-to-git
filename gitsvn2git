@@ -286,13 +286,25 @@ def rewrite_history(package_dir: Path):
             check=True,
             cwd=package_dir,
             shell=True,
+            stdout=PIPE,
+        )
+        msg3("Removing git-svn-id from commit messages...")
+        run(
+            (
+                "git-filter-repo --message-callback "
+                """\'
+                return re.sub(b"\\ngit-svn-id.*\\n", b"", message)\'
+                """
+            ),
+            check=True,
+            cwd=package_dir,
+            shell=True,
+            stdout=PIPE,
         )
         msg3("Removing '# $Id$' from PKGBUILD...")
         run(
             (
                 "git filter-branch"
-                " --msg-filter"
-                " \"sed -n '/git-svn-id/{n;x;d;};x;1d;p;\\${x;p;}'\""
                 " --tree-filter"
                 " \"test -f PKGBUILD && sed '/^# \\$Id/d' -i PKGBUILD || true\""
                 " -f HEAD"
@@ -300,6 +312,7 @@ def rewrite_history(package_dir: Path):
             check=True,
             cwd=package_dir,
             shell=True,
+            stdout=PIPE,
         )
     except CalledProcessError as e:
         error1("Error rewriting history...")
