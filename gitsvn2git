@@ -292,9 +292,7 @@ def rewrite_history(package_dir: Path):
         run(
             (
                 "git-filter-repo --message-callback "
-                """\'
-                return re.sub(b"\\ngit-svn-id.*\\n", b"", message)\'
-                """
+                '\'return re.sub(b"\\ngit-svn-id.*\\n", b"", message)\''
             ),
             check=True,
             cwd=package_dir,
@@ -304,10 +302,8 @@ def rewrite_history(package_dir: Path):
         msg3("Removing '# $Id$' from PKGBUILD...")
         run(
             (
-                "git filter-branch"
-                " --tree-filter"
-                " \"test -f PKGBUILD && sed '/^# \\$Id/d' -i PKGBUILD || true\""
-                " -f HEAD"
+                "git-filter-repo --blob-callback "
+                '\'blob.data = blob.data.replace(b"# $Id$\\n", b"")\''
             ),
             check=True,
             cwd=package_dir,
