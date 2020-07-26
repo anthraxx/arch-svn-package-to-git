@@ -1,2 +1,3 @@
-anthraxx = anthraxx <anthraxx@archlinux.org>
-demize = Johannes Löthberg <johannes@kyriasis.com>
+# .mailmap format, check man git-shortlog for more info.
+anthraxx <anthraxx> anthraxx <anthraxx@archlinux.org>
+Johannes Löthberg <johannes@kyriasis.com> demize <demize@9fca08f4-af9d-4005-b8df-a31f2cc04f65>

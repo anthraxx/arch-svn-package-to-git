@@ -259,11 +259,16 @@ def rewrite_history(package_dir: Path):
     """
     info("Rewrite history...")
     try:
-        rewrite_script = (Path.cwd() / "git-rewrite-author").absolute()
+        mailmap_file = Path(__file__).parent / 'AUTHORS'
+        run(
+            f"git-filter-repo --mailmap {mailmap_file.absolute()}",
+            check=True,
+            cwd=package_dir,
+            shell=True,
+        )
         run(
             (
                 "git filter-branch"
-                f' --commit-filter "$({rewrite_script})"'
                 " --msg-filter"
                 " \"sed -n '/git-svn-id/{n;x;d;};x;1d;p;\\${x;p;}'\""
                 " --tree-filter"
