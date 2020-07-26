@@ -48,8 +48,8 @@ class Release:
         )
 
 
-def msg(message: str):
-    """Pretty format message.
+def msg1(message: str):
+    """Pretty format first level message.
 
     Args:
         message (str): message to format.
@@ -58,8 +58,8 @@ def msg(message: str):
     print(f"{s.BOLD}{s.GREEN}==>{s.RESET}{s.BOLD} {message}{s.RESET}")
 
 
-def info(message: str):
-    """Pretty format message.
+def msg2(message: str):
+    """Pretty format second level message.
 
     Args:
         message (str): message to format.
@@ -68,14 +68,34 @@ def info(message: str):
     print(f"{s.BOLD}{s.BLUE}  ->{s.RESET}{s.BOLD} {message}{s.RESET}")
 
 
-def error(error: str):
-    """Pretty format error message.
+def msg3(message: str):
+    """Pretty format third level message.
+
+    Args:
+        message (str): message to format.
+    """
+    s = Style()
+    print(f"{s.BOLD}{s.YELLOW}    ·>{s.RESET}{s.BOLD} {message}{s.RESET}")
+
+
+def error1(error: str):
+    """Pretty format first level error message.
 
     Args:
         error (str): message to format.
     """
     s = Style()
     print(f"{s.BOLD}{s.RED}==>{s.RESET}{s.BOLD} {error}{s.RESET}")
+
+
+def error2(error: str):
+    """Pretty format 2nd level error message.
+
+    Args:
+        error (str): message to format.
+    """
+    s = Style()
+    print(f"{s.BOLD}{s.RED}  ->{s.RESET}{s.BOLD} {error}{s.RESET}")
 
 
 def parse_input() -> Tuple[Path, Path, List[str]]:
@@ -90,7 +110,7 @@ def parse_input() -> Tuple[Path, Path, List[str]]:
 
     input_dir = Path(sys.argv[1])
     if not input_dir.exists() or not input_dir.is_dir():
-        error(f"Input directory not found: {input_dir}")
+        error1(f"Input directory not found: {input_dir}")
         exit(1)
 
     target_dir = Path(sys.argv[2])
@@ -102,7 +122,7 @@ def parse_input() -> Tuple[Path, Path, List[str]]:
             packages.append(package)
             package_dir = input_dir / package
             if not package_dir.exists():
-                error(f"Package directory not found: {package_dir}")
+                error1(f"Package directory not found: {package_dir}")
     else:
         packages = [p.name for p in input_dir.glob("*") if p.is_dir()]
 
@@ -116,11 +136,11 @@ def clone_repository(input_dir: Path, package_dir: Path):
         input_dir (Path): input repository directory.
         package_dir (Path): package directory.
     """
-    info("Cloning parent repository...")
+    msg2("Cloning parent repository...")
     try:
         run(f"git clone {input_dir} {package_dir}", check=True, shell=True)
     except CalledProcessError as e:
-        error(f"Error cloning repository to {target_dir}...")
+        error1(f"Error cloning repository to {target_dir}...")
         raise e
 
 
@@ -132,7 +152,7 @@ def filter_subdirectory(package_dir: Path, subdirectory: str):
         subdirectory (str): subdirectory in the repository.
     """
     subdirectory = (package_dir / subdirectory).relative_to(package_dir)
-    info(f"Filtering subdirectory '{subdirectory}'...")
+    msg2(f"Filtering subdirectory '{subdirectory}'...")
     try:
         run(
             f"git-filter-repo --subdirectory-filter {subdirectory}",
@@ -141,7 +161,7 @@ def filter_subdirectory(package_dir: Path, subdirectory: str):
             cwd=package_dir,
         )
     except CalledProcessError as e:
-        error(f"Error filtering subdirectory '{subdirectory}'...")
+        error1(f"Error filtering subdirectory '{subdirectory}'...")
         raise e
 
 
@@ -199,7 +219,7 @@ def get_pkgbuild(package_dir: Path, file: str, commit: str):
         stderr=PIPE,
     )
     if p.returncode != 0:
-        print(f"Error getting PKGBUILD from {commit} - Skipping")
+        error2(f"Error getting PKGBUILD from {commit} - Skipping")
         return None
     pkgbuild = p.stdout.decode()
     # Remove svn '# $Id$' since this will cause a md5sum mismatch
@@ -222,7 +242,7 @@ def get_releases(
     Returns:
         List[Release]: a list of the releases.
     """
-    info("Parsing releases...")
+    msg2("Parsing releases...")
     try:
         releases = []
         p = run(
@@ -247,7 +267,7 @@ def get_releases(
             releases.append(release)
         return releases
     except CalledProcessError as e:
-        error("Error getting releases...")
+        error1("Error getting releases...")
         raise e
 
 
@@ -257,15 +277,17 @@ def rewrite_history(package_dir: Path):
     Args:
         package_dir (Path): package directory.
     """
-    info("Rewrite history...")
+    msg2("Rewrite history...")
     try:
-        mailmap_file = Path(__file__).parent / 'AUTHORS'
+        mailmap_file = Path(__file__).parent / "AUTHORS"
+        msg3("Remapping authors...")
         run(
             f"git-filter-repo --mailmap {mailmap_file.absolute()}",
             check=True,
             cwd=package_dir,
             shell=True,
         )
+        msg3("Removing '# $Id$' from PKGBUILD...")
         run(
             (
                 "git filter-branch"
@@ -280,7 +302,7 @@ def rewrite_history(package_dir: Path):
             shell=True,
         )
     except CalledProcessError as e:
-        error("Error rewriting history...")
+        error1("Error rewriting history...")
         raise e
 
 
@@ -291,7 +313,7 @@ def tag_releases(package_dir: Path, releases: List[Release]):
         package_dir (Path): package directory.
         releases (List[Release]): list of releases.
     """
-    info("Tagging releases...")
+    msg2("Tagging releases...")
     release_map = {}
     for release in releases:
         release_map[release.file_hash] = release
@@ -328,7 +350,7 @@ def tag_releases(package_dir: Path, releases: List[Release]):
             )
             release.target_commit = commit
     except CalledProcessError as e:
-        error("Error tagging releases...")
+        error1("Error tagging releases...")
         raise e
 
 
@@ -338,7 +360,7 @@ def clean_up(package_dir: Path):
     Args:
         package_dir (Path): package directory.
     """
-    info("Cleaning up...")
+    msg2("Cleaning up...")
     try:
         shutil.rmtree(package_dir / ".git/refs/original")
         shutil.rmtree(package_dir / ".git/refs/remotes")
@@ -365,22 +387,22 @@ def clean_up(package_dir: Path):
             shell=True,
         )
     except CalledProcessError as e:
-        error("Error cleaning up...")
+        error1("Error cleaning up...")
         raise e
 
 
 if __name__ == "__main__":
     os.environ["FILTER_BRANCH_SQUELCH_WARNING"] = "1"
     input_dir, target_dir, packages = parse_input()
-    msg(f"Using input directory: {input_dir}")
-    msg(f"Using target directory: {target_dir}")
+    msg1(f"Using input directory: {input_dir}")
+    msg1(f"Using target directory: {target_dir}")
 
     for package in packages:
-        msg(f"Converting {package}...")
+        msg1(f"Converting {package}...")
 
         package_dir = target_dir / package
         if package_dir.exists():
-            info("Removing old checkout...")
+            msg2("Removing old checkout...")
             shutil.rmtree(package_dir)
 
         try:
