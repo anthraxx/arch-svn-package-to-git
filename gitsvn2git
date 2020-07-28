@@ -8,7 +8,7 @@ import sys
 from pathlib import Path
 from subprocess import CalledProcessError, PIPE, run
 from tempfile import NamedTemporaryFile
-from typing import List, Tuple
+from typing import List, Tuple, Optional
 
 
 class Style:
@@ -35,7 +35,7 @@ class Release:
         self.tag: str = tag
         self.file_hash: str = file_hash
         self.input_commit: str = input_commit
-        self.target_commit: str = None
+        self.target_commit: Optional[str] = None
 
     def __repr__(self):
         return str(
@@ -395,6 +395,7 @@ def tag_releases(package_dir: Path, releases: List[Release]):
     for release in releases:
         release_map[release.file_hash] = release
 
+    released = {}
     try:
         p = run(
             "git log --pretty='%h'",
@@ -426,9 +427,15 @@ def tag_releases(package_dir: Path, releases: List[Release]):
                 shell=True,
             )
             release.target_commit = commit
+            released[tag] = release
     except CalledProcessError as e:
         error1("Error tagging releases...")
         raise e
+
+    for release in releases:
+        if release.tag in released:
+            continue
+        error2(f"Failed to tag {release.tag} with file-hash {release.file_hash} of input-commit {release.input_commit}")
 
 
 def clean_up(package_dir: Path):
