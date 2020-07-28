@@ -401,7 +401,6 @@ def clean_up(package_dir: Path):
 
 
 if __name__ == "__main__":
-    os.environ["FILTER_BRANCH_SQUELCH_WARNING"] = "1"
     input_dir, target_dir, packages = parse_input()
     msg1(f"Using input directory: {input_dir}")
     msg1(f"Using target directory: {target_dir}")
