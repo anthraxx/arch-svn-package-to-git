@@ -98,6 +98,16 @@ def error2(error: str):
     print(f"{s.BOLD}{s.RED}  ->{s.RESET}{s.BOLD} {error}{s.RESET}")
 
 
+def warn2(warn: str):
+    """Pretty format 2nd level warn message.
+
+    Args:
+        warn (str): message to format.
+    """
+    s = Style()
+    print(f"{s.BOLD}{s.YELLOW}  ->{s.RESET}{s.BOLD} {warn}{s.RESET}")
+
+
 def parse_input() -> Tuple[Path, Path, List[str]]:
     """Parse input arguments.
 
@@ -220,13 +230,14 @@ def get_tag_from_pkgbuild(pkgbuild: str):
     return tag
 
 
-def get_pkgbuild(package_dir: Path, file: str, commit: str):
+def get_pkgbuild(package_dir: Path, file: str, commit: str, fatal: bool = True):
     """Get PKGBUILD content in an specific commit.
 
     Args:
         package_dir (Path): package directory.
         file (str): PKGBUILD file.
         commit (str): commit hash.
+        fatal (bool): Treat non existing PKGBUILD file as error (default: True).
 
     Returns:
         str: PKGBUILD content.
@@ -247,21 +258,28 @@ def get_pkgbuild(package_dir: Path, file: str, commit: str):
     if not commit_files:
         return None
 
-    pkgbuild_file: str = commit_files[0]
-    p = run(
-        f"git show {commit}:{pkgbuild_file}",
-        cwd=package_dir,
-        shell=True,
-        stdout=PIPE,
-        stderr=PIPE,
-    )
-    if p.returncode != 0:
+    for pkgbuild_file in commit_files:
+        p = run(
+            f"git show {commit}:{pkgbuild_file}",
+            cwd=package_dir,
+            shell=True,
+            stdout=PIPE,
+            stderr=PIPE,
+        )
+        if p.returncode != 0:
+            continue
+
+        pkgbuild = p.stdout.decode()
+        # Remove svn '# $Id$' since this will cause a md5sum mismatch
+        pkgbuild = pkgbuild.replace("# $Id$\n", "")
+        return pkgbuild
+
+    if fatal:
         error2(f"Error getting PKGBUILD from {commit} - Skipping")
-        return None
-    pkgbuild = p.stdout.decode()
-    # Remove svn '# $Id$' since this will cause a md5sum mismatch
-    pkgbuild = pkgbuild.replace("# $Id$\n", "")
-    return pkgbuild
+    else:
+        warn2(f"Error getting PKGBUILD from {commit} - Skipping")
+
+    return None
 
 
 def get_releases(
@@ -291,7 +309,7 @@ def get_releases(
         )
         commits = p.stdout.decode().splitlines()
         for commit in commits:
-            pkgbuild = get_pkgbuild(package_dir, pkgbuild_file, commit)
+            pkgbuild = get_pkgbuild(package_dir, pkgbuild_file, commit, fatal=True)
             if not pkgbuild:
                 continue
 
@@ -388,7 +406,7 @@ def tag_releases(package_dir: Path, releases: List[Release]):
         commits = p.stdout.decode().splitlines()
         # Reverse tagging order to left the tag in the latest commit
         for commit in commits:
-            pkgbuild = get_pkgbuild(package_dir, "PKGBUILD", commit)
+            pkgbuild = get_pkgbuild(package_dir, "PKGBUILD", commit, fatal=False)
             if not pkgbuild:
                 continue
 
