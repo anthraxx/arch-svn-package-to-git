@@ -216,8 +216,20 @@ def get_pkgbuild(package_dir: Path, file: str, commit: str):
     Returns:
         str: PKGBUILD content.
     """
-    pkgbuild_file = next(package_dir.glob(file))
-    pkgbuild_file = pkgbuild_file.relative_to(package_dir)
+
+    p = run(
+        f"git show --pretty='' --no-commit-id --name-only {commit}",
+        cwd=package_dir,
+        shell=True,
+        stdout=PIPE,
+        stderr=PIPE,
+    )
+    if p.returncode != 0:
+        error2(f"Error getting file-list from {commit} - Skipping")
+        return None
+    commit_files: List[str] = p.stdout.decode().split()
+    pkgbuild_file: str = next(filter(lambda path: os.path.basename(path) == "PKGBUILD", commit_files))
+
     p = run(
         f"git show {commit}:{pkgbuild_file}",
         cwd=package_dir,
