@@ -14,6 +14,20 @@ collection and history/content rewrite.
 - Strip git-svn related git-svn-id from commit messages
 - Strip svn specific $Id$ property
 
+### GitSVN checkout:
+
+The gitsvn checkout must be a bare clone that is setup as a mirror in order
+to make single branch cloning work appropriately and be able to easily fetch
+and update from the remote for all branch related refs.
+
+git config:
+```
+[remote "origin"]
+	url = https://github.com/archlinux/svntogit-community
+	fetch = +refs/*:refs/*
+	mirror = true
+```
+
 
 ### Usage:
 
@@ -23,7 +37,7 @@ collection and history/content rewrite.
 ### Arguments:
 
 - `INPUT_GIT [DIRECTORY]`
-**synopsis:** Set the input directory of the git-svn repository checkout
+**synopsis:** Set the input directory of the git-svn bare repository checkout
 **required:** Yes
 
 

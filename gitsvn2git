@@ -112,6 +112,16 @@ def parse_input() -> Tuple[Path, Path, List[str]]:
     if not input_dir.exists() or not input_dir.is_dir():
         error1(f"Input directory not found: {input_dir}")
         exit(1)
+    if not (input_dir / 'packed-refs').exists() or (input_dir / 'index').exists():
+        error1(f"Input directory not a bare git clone: {input_dir}")
+        exit(1)
+
+    package_refs: List[str] = []
+    with open(input_dir / 'packed-refs', 'r') as f:
+        for ref in f.read().splitlines():
+            if 'refs/heads/packages/' not in ref:
+                continue
+            package_refs.append(ref.split()[1])
 
     target_dir = Path(sys.argv[2])
     target_dir.mkdir(exist_ok=True, parents=True)
@@ -119,10 +129,10 @@ def parse_input() -> Tuple[Path, Path, List[str]]:
     packages = []
     if len(sys.argv) > 3:
         for package in sys.argv[3:]:
+            if f'refs/heads/packages/{package}' not in package_refs:
+                error1(f"Package ref not found: {package}")
+                continue
             packages.append(package)
-            package_dir = input_dir / package
-            if not package_dir.exists():
-                error1(f"Package directory not found: {package_dir}")
     else:
         packages = [p.name for p in input_dir.glob("*") if p.is_dir()]
 
@@ -140,7 +150,7 @@ def clone_repository(input_dir: Path, package_dir: Path):
     try:
         run(
             (
-                f"git clone {input_dir} --branch packages/{package_dir.name}"
+                f"git clone {input_dir} --no-local --branch packages/{package_dir.name}"
                 f" --single-branch {package_dir}"
             ),
             check=True,
