@@ -48,6 +48,18 @@ class Release:
         )
 
 
+def debug3(message: str):
+    """Pretty format third level debug message.
+
+    Args:
+        message (str): message to format.
+    """
+    if not os.environ.get('GITSVN2GIT_DEBUG'):
+        return
+    s = Style()
+    print(f"{s.BOLD}{s.YELLOW}    ·>{s.RESET}{s.BOLD} {message}{s.RESET}")
+
+
 def msg1(message: str):
     """Pretty format first level message.
 
@@ -86,6 +98,8 @@ def error1(error: str):
     """
     s = Style()
     print(f"{s.BOLD}{s.RED}==>{s.RESET}{s.BOLD} {error}{s.RESET}")
+    if os.environ.get('GITSVN2GIT_BREAKPOINT_ON_ERROR'):
+        breakpoint()
 
 
 def error2(error: str):
@@ -96,6 +110,8 @@ def error2(error: str):
     """
     s = Style()
     print(f"{s.BOLD}{s.RED}  ->{s.RESET}{s.BOLD} {error}{s.RESET}")
+    if os.environ.get('GITSVN2GIT_BREAKPOINT_ON_ERROR'):
+        breakpoint()
 
 
 def warn2(warn: str):
@@ -267,6 +283,7 @@ def get_pkgbuild(package_dir: Path, file: str, commit: str, fatal: bool = True):
             stderr=PIPE,
         )
         if p.returncode != 0:
+            debug3(f'Cannot find PKGBUILD in {commit} - Skipping')
             continue
 
         pkgbuild = p.stdout.decode()
@@ -320,6 +337,8 @@ def get_releases(
 
             release = Release(tag, file_hash, commit)
             releases.append(release)
+
+            debug3(f'Found release: {release}')
         return releases
     except CalledProcessError as e:
         error1("Error getting releases...")
@@ -428,6 +447,7 @@ def tag_releases(package_dir: Path, releases: List[Release]):
             )
             release.target_commit = commit
             released[tag] = release
+            debug3(f'Tagged {commit} for release {release}')
     except CalledProcessError as e:
         error1("Error tagging releases...")
         raise e

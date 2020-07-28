@@ -53,6 +53,15 @@ git config:
 **default:** All packages of the specified input repository
 
 
+### Environment variables:
+
+- `GITSVN2GIT_BREAKPOINT_ON_ERROR`
+**synopsis:** If set, invoke an interactive source code debugger for investigation
+
+- `GITSVN2GIT_DEBUG`
+**synopsis:** If set, print debug messages during execution
+
+
 ### Examples:
 ##### Whole repository:
 
