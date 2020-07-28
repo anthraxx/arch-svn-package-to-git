@@ -266,7 +266,7 @@ def get_pkgbuild(package_dir: Path, file: str, commit: str):
 
 def get_releases(
     package_dir: Path,
-    grep: str = "archrelease",
+    grep: str = "archrelease: copy",
     pkgbuild_file: str = "./repos/*/PKGBUILD",
 ):
     """Get releases from the PKGBUILD filtering commit messages.
