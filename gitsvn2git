@@ -138,7 +138,14 @@ def clone_repository(input_dir: Path, package_dir: Path):
     """
     msg2("Cloning parent repository...")
     try:
-        run(f"git clone {input_dir} {package_dir}", check=True, shell=True)
+        run(
+            (
+                f"git clone {input_dir} --branch packages/{package_dir.name}"
+                f" --single-branch {package_dir}"
+            ),
+            check=True,
+            shell=True,
+        )
     except CalledProcessError as e:
         error1(f"Error cloning repository to {target_dir}...")
         raise e
@@ -415,7 +422,6 @@ if __name__ == "__main__":
 
         try:
             clone_repository(input_dir, package_dir)
-            filter_subdirectory(package_dir, package)
             releases = get_releases(package_dir)
             filter_subdirectory(package_dir, "trunk")
             rewrite_history(package_dir)
