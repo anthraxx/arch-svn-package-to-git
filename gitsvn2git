@@ -307,6 +307,19 @@ def rewrite_history(package_dir: Path):
             shell=True,
             stdout=PIPE,
         )
+        msg3("Remapping commiter to author...")
+        run(
+            (
+                "git-filter-repo --commit-callback '"
+                "commit.committer_name  = commit.author_name\n"
+                "commit.committer_email = commit.author_email\n"
+                "commit.committer_date  = commit.author_date'"
+            ),
+            check=True,
+            cwd=package_dir,
+            shell=True,
+            stdout=PIPE,
+        )
         msg3("Removing git-svn-id from commit messages...")
         run(
             (
