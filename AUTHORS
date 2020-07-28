@@ -2,5 +2,5 @@
 # Example 1: New name <newemail@arch.com> Old name
 # Example 2: New name <newemail@arch.com> <oldmail@other.net>
 # Example 3: New name <newemail@arch.com> Old name <oldmail@other.net>
-anthraxx <anthraxx> anthraxx <anthraxx@archlinux.org>
-Johannes Löthberg <johannes@kyriasis.com> demize <demize@9fca08f4-af9d-4005-b8df-a31f2cc04f65>
+anthraxx <anthraxx@archlinux.org> anthraxx
+Johannes Löthberg <johannes@kyriasis.com> demize
