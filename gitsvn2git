@@ -192,7 +192,7 @@ def clone_repository(input_dir: Path, package_dir: Path):
         raise e
 
 
-def filter_subdirectory(package_dir: Path, subdirectory: str):
+def filter_subdirectory(package_dir: Path, subdirectory: Path) -> None:
     """Filter subdirectory in the package repository.
 
     Args:
