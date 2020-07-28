@@ -213,7 +213,7 @@ def filter_subdirectory(package_dir: Path, subdirectory: str):
         raise e
 
 
-def get_tag_from_pkgbuild(pkgbuild: str):
+def get_tag_from_pkgbuild(pkgbuild: bytes):
     """Extract tag from the PKGBUILD content.
 
     Args:
@@ -224,7 +224,7 @@ def get_tag_from_pkgbuild(pkgbuild: str):
     # It needs to generate a temporary file to be parsed in bash since it got
     # no direct access to PKGBUILD in the filesystem.
     tmpfile = NamedTemporaryFile()
-    tmpfile.write(pkgbuild.encode("utf-8"))
+    tmpfile.write(pkgbuild)
     tmpfile.flush()
 
     p = run(
@@ -237,16 +237,16 @@ def get_tag_from_pkgbuild(pkgbuild: str):
     )
     pkgver = p.stdout.decode()
 
-    pkgrel = re.search(r"pkgrel=(.*)", pkgbuild)[0].lstrip("pkgrel=")
+    pkgrel = re.search(rb"pkgrel=(.*)", pkgbuild)[0].lstrip(b"pkgrel=")
 
-    if epoch := re.search(r"epoch=(\d*)", pkgbuild):
+    if epoch := re.search(rb"epoch=(\d*)", pkgbuild):
         epoch = "@" + epoch[0].lstrip("epoch=")
 
     tag = f"{pkgver}-{pkgrel}{epoch or ''}"
     return tag
 
 
-def get_pkgbuild(package_dir: Path, file: str, commit: str, fatal: bool = True):
+def get_pkgbuild(package_dir: Path, file: str, commit: str, fatal: bool = True) -> Optional[bytes]:
     """Get PKGBUILD content in an specific commit.
 
     Args:
@@ -286,9 +286,10 @@ def get_pkgbuild(package_dir: Path, file: str, commit: str, fatal: bool = True):
             debug3(f'Cannot find PKGBUILD in {commit} - Skipping')
             continue
 
-        pkgbuild = p.stdout.decode()
+        debug3(f'reading PKGBUILD of commit {commit}')
+        pkgbuild = p.stdout
         # Remove svn '# $Id$' since this will cause a md5sum mismatch
-        pkgbuild = pkgbuild.replace("# $Id$\n", "")
+        pkgbuild = pkgbuild.replace(b"# $Id$\n", b"")
         return pkgbuild
 
     if fatal:
@@ -330,7 +331,7 @@ def get_releases(
             if not pkgbuild:
                 continue
 
-            md5 = hashlib.md5(pkgbuild.encode("utf-8"))
+            md5 = hashlib.md5(pkgbuild)
             file_hash = md5.hexdigest()
 
             tag = get_tag_from_pkgbuild(pkgbuild)
@@ -430,7 +431,7 @@ def tag_releases(package_dir: Path, releases: List[Release]):
             if not pkgbuild:
                 continue
 
-            md5 = hashlib.md5(pkgbuild.encode("utf-8"))
+            md5 = hashlib.md5(pkgbuild)
             file_hash = md5.hexdigest()
 
             try:
