@@ -33,6 +33,8 @@ git config:
 
     gitsvn2git INPUT_GIT TARGET_DIR [PACKAGE]...
 
+    gitsvn2git INPUT_GIT --list-packages
+
 
 ### Arguments:
 
@@ -60,6 +62,12 @@ git config:
 
     gitsvn2git repos/community community-converted capstone radare2
 
+##### List bare clone packages:
+
+    gitsvn2git repos/community --list-packages
+
 ##### Parallelize:
 
     parallel gitsvn2git repos/community community-converted ::: repos/community/*
+
+    parallel gitsvn2git repos/community community-converted ::: $(gitsvn2git repos/community --list-packages)

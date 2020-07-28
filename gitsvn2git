@@ -106,6 +106,7 @@ def parse_input() -> Tuple[Path, Path, List[str]]:
     """
     if len(sys.argv) < 3:
         print(f"Usage: {__file__} INPUT_DIR TARGET_DIR [PACKAGE(s)]...")
+        print(f"Usage: {__file__} INPUT_DIR --list-packages")
         exit()
 
     input_dir = Path(sys.argv[1])
@@ -123,9 +124,6 @@ def parse_input() -> Tuple[Path, Path, List[str]]:
                 continue
             package_refs.append(ref.split()[1])
 
-    target_dir = Path(sys.argv[2])
-    target_dir.mkdir(exist_ok=True, parents=True)
-
     packages = []
     if len(sys.argv) > 3:
         for package in sys.argv[3:]:
@@ -134,7 +132,14 @@ def parse_input() -> Tuple[Path, Path, List[str]]:
                 continue
             packages.append(package)
     else:
-        packages = [p.name for p in input_dir.glob("*") if p.is_dir()]
+        packages = list(map(lambda path: Path(path).name, package_refs))
+
+    if '--list-packages' == sys.argv[2]:
+        list(map(print, packages))
+        exit()
+
+    target_dir = Path(sys.argv[2])
+    target_dir.mkdir(exist_ok=True, parents=True)
 
     return input_dir, target_dir, packages
 
