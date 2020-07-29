@@ -320,7 +320,7 @@ def get_releases(
     try:
         releases = []
         p = run(
-            f"git log --pretty='%h' --grep='{grep}' .",
+            f"git log --pretty='%h %s' --grep='{grep}' -- repos",
             check=True,
             cwd=package_dir,
             shell=True,
@@ -328,8 +328,16 @@ def get_releases(
         )
         commits = p.stdout.decode().splitlines()
         for commit in commits:
-            pkgbuild = get_pkgbuild(package_dir, pkgbuild_file, commit, fatal=True)
+            commit_hash, subject = commit.split(maxsplit=1)
+            release_repos = subject.split('copy trunk to ')[1].split(', ')
+
+            for release_repo in release_repos:
+                pkgbuild_file = f'repos/{release_repo}/PKGBUILD'
+                if pkgbuild := get_pkgbuild(package_dir, pkgbuild_file, commit_hash):
+                    break
+
             if not pkgbuild:
+                warn3(f"Error getting PKGBUILD from {commit_hash} - Skipping")
                 continue
 
             md5 = hashlib.md5(pkgbuild)
@@ -337,7 +345,7 @@ def get_releases(
 
             tag = get_tag_from_pkgbuild(pkgbuild)
 
-            release = Release(tag, file_hash, commit)
+            release = Release(tag, file_hash, commit_hash)
             releases.append(release)
 
             debug3(f'Found release: {release}')
