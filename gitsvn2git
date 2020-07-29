@@ -1,7 +1,6 @@
 #!/bin/env python
 import hashlib
 import os
-import re
 import shutil
 import sys
 
@@ -46,6 +45,18 @@ class Release:
                 "target_commit": self.target_commit,
             }
         )
+
+
+def debug2(message: str):
+    """Pretty format second level debug message.
+
+    Args:
+        message (str): message to format.
+    """
+    if not os.environ.get('GITSVN2GIT_DEBUG'):
+        return
+    s = Style()
+    print(f"{s.BOLD}{s.YELLOW}  ->{s.RESET}{s.BOLD} {message}{s.RESET}")
 
 
 def debug3(message: str):
@@ -124,6 +135,16 @@ def warn2(warn: str):
     print(f"{s.BOLD}{s.YELLOW}  ->{s.RESET}{s.BOLD} {warn}{s.RESET}")
 
 
+def warn3(warn: str):
+    """Pretty format 2nd level warn message.
+
+    Args:
+        warn (str): message to format.
+    """
+    s = Style()
+    print(f"{s.BOLD}{s.YELLOW}    ·>{s.RESET}{s.BOLD} {warn}{s.RESET}")
+
+
 def parse_input() -> Tuple[Path, Path, List[str]]:
     """Parse input arguments.
 
@@ -197,7 +218,7 @@ def filter_subdirectory(package_dir: Path, subdirectory: Path) -> None:
 
     Args:
         package_dir (Path): package directory.
-        subdirectory (str): subdirectory in the repository.
+        subdirectory (Path): subdirectory in the repository.
     """
     subdirectory = (package_dir / subdirectory).relative_to(package_dir)
     msg2(f"Filtering subdirectory '{subdirectory}'...")
@@ -213,104 +234,84 @@ def filter_subdirectory(package_dir: Path, subdirectory: Path) -> None:
         raise e
 
 
-def get_tag_from_pkgbuild(pkgbuild: bytes):
+def get_tag_from_pkgbuild(pkgbuild: bytes) -> str:
     """Extract tag from the PKGBUILD content.
 
     Args:
-        pkgbuild (str): PKGBUILD content.
+        pkgbuild (bytes): PKGBUILD content.
     Returns:
         str: release tag formatted.
     """
     # It needs to generate a temporary file to be parsed in bash since it got
     # no direct access to PKGBUILD in the filesystem.
-    tmpfile = NamedTemporaryFile()
-    tmpfile.write(pkgbuild)
-    tmpfile.flush()
+    with NamedTemporaryFile() as tmpfile:
+        tmpfile.write(pkgbuild)
+        tmpfile.flush()
 
-    p = run(
-        f"bash -c 'source {tmpfile.name} && echo -n $pkgver'",
-        check=True,
-        shell=True,
-        cwd=package_dir,
-        stdout=PIPE,
-        stderr=PIPE,
-    )
-    pkgver = p.stdout.decode()
+        p = run(
+            f"bash -c 'source {tmpfile.name} && printf \"%s\\n%s\\n%s\\n\" \"$epoch\" \"$pkgver\" \"$pkgrel\"'",
+            check=True,
+            shell=True,
+            cwd=package_dir,
+            stdout=PIPE,
+            stderr=PIPE,
+        )
+        version_info: List[str] = p.stdout.decode().splitlines()
 
-    pkgrel = re.search(rb"pkgrel=(.*)", pkgbuild)[0].lstrip(b"pkgrel=")
+    epoch, pkgver, pkgrel = version_info
 
-    if epoch := re.search(rb"epoch=(\d*)", pkgbuild):
-        epoch = "@" + epoch[0].lstrip("epoch=")
+    if epoch:
+        return f"{epoch}-{pkgver}-{pkgrel}"
 
-    tag = f"{pkgver}-{pkgrel}{epoch or ''}"
-    return tag
+    return f"{pkgver}-{pkgrel}"
 
 
-def get_pkgbuild(package_dir: Path, file: str, commit: str, fatal: bool = True) -> Optional[bytes]:
+def get_pkgbuild(package_dir: Path, file: str, commit: str) -> Optional[bytes]:
     """Get PKGBUILD content in an specific commit.
 
     Args:
         package_dir (Path): package directory.
         file (str): PKGBUILD file.
         commit (str): commit hash.
-        fatal (bool): Treat non existing PKGBUILD file as error (default: True).
 
     Returns:
-        str: PKGBUILD content.
+        Optional[bytes]: PKGBUILD content or None.
     """
 
     p = run(
-        f"git show --pretty='' --no-commit-id --name-only {commit}",
+        f"git show {commit}:{file}",
         cwd=package_dir,
         shell=True,
         stdout=PIPE,
         stderr=PIPE,
     )
     if p.returncode != 0:
-        error2(f"Error getting file-list from {commit} - Skipping")
-        return None
-    commit_files: List[str] = p.stdout.decode().split()
-    commit_files = list(filter(lambda path: os.path.basename(path) == "PKGBUILD", commit_files))
-    if not commit_files:
+        debug3(f'Cannot find PKGBUILD in {commit} - Skipping')
         return None
 
-    for pkgbuild_file in commit_files:
-        p = run(
-            f"git show {commit}:{pkgbuild_file}",
-            cwd=package_dir,
-            shell=True,
-            stdout=PIPE,
-            stderr=PIPE,
-        )
-        if p.returncode != 0:
-            debug3(f'Cannot find PKGBUILD in {commit} - Skipping')
-            continue
+    debug3(f'reading PKGBUILD of commit {commit}')
+    pkgbuild = p.stdout
 
-        debug3(f'reading PKGBUILD of commit {commit}')
-        pkgbuild = p.stdout
-        # Remove svn '# $Id$' since this will cause a md5sum mismatch
-        pkgbuild = pkgbuild.replace(b"# $Id$\n", b"")
-        return pkgbuild
+    # Remove svn '# $Id$' since this will cause a md5sum mismatch
+    pkgbuild = pkgbuild.replace(b"# $Id$\n", b"")
 
-    if fatal:
-        error2(f"Error getting PKGBUILD from {commit} - Skipping")
-    else:
-        warn2(f"Error getting PKGBUILD from {commit} - Skipping")
+    # Remove expanded errorous svn '# $Id: '
+    if pkgbuild_lines := pkgbuild.splitlines(keepends=True):
+        if pkgbuild_lines[0].startswith(b'# $Id: PKGBUILD '):
+            pkgbuild = b''.join(pkgbuild_lines[1:])
 
-    return None
+    return pkgbuild
 
 
 def get_releases(
     package_dir: Path,
     grep: str = "archrelease: copy",
-    pkgbuild_file: str = "./repos/*/PKGBUILD",
-):
+) -> List[Release]:
     """Get releases from the PKGBUILD filtering commit messages.
 
     Args:
         package_dir (Path): package directory.
         grep (str): string to be used in git grep.
-        pkgbuild_file (str): location of the PKGBUILD file to be used.
 
     Returns:
         List[Release]: a list of the releases.
@@ -427,7 +428,7 @@ def tag_releases(package_dir: Path, releases: List[Release]):
         commits = p.stdout.decode().splitlines()
         # Reverse tagging order to left the tag in the latest commit
         for commit in commits:
-            pkgbuild = get_pkgbuild(package_dir, "PKGBUILD", commit, fatal=False)
+            pkgbuild = get_pkgbuild(package_dir, "PKGBUILD", commit)
             if not pkgbuild:
                 continue
 
