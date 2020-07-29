@@ -511,12 +511,9 @@ if __name__ == "__main__":
             msg2("Removing old checkout...")
             shutil.rmtree(package_dir)
 
-        try:
-            clone_repository(input_dir, package_dir)
-            releases = get_releases(package_dir)
-            filter_subdirectory(package_dir, "trunk")
-            rewrite_history(package_dir)
-            tag_releases(package_dir, releases)
-            clean_up(package_dir)
-        except CalledProcessError:
-            break
+        clone_repository(input_dir, package_dir)
+        releases = get_releases(package_dir)
+        filter_subdirectory(package_dir, Path("trunk"))
+        rewrite_history(package_dir)
+        tag_releases(package_dir, releases)
+        clean_up(package_dir)
