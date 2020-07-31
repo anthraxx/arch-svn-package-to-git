@@ -261,9 +261,9 @@ def get_tag_from_pkgbuild(pkgbuild: bytes) -> str:
     epoch, pkgver, pkgrel = version_info
 
     if epoch:
-        return f"{epoch}-{pkgver}-{pkgrel}"
+        return f"release/{epoch}-{pkgver}-{pkgrel}"
 
-    return f"{pkgver}-{pkgrel}"
+    return f"release/{pkgver}-{pkgrel}"
 
 
 def get_pkgbuild(package_dir: Path, file: str, commit: str) -> Optional[bytes]:
