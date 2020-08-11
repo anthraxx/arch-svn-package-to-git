@@ -1,0 +1,21 @@
+#!/bin/bash
+
+if (( $# < 2 )); then
+    cat <<- _EOF_
+		Usage: ${BASH_SOURCE[0]##*/} REPO COMMIT
+
+		Returns all packages updated in the target repo since a specific commit.
+_EOF_
+    exit 1
+fi
+
+repo="$1"
+since="$2"
+
+packages=()
+for _commit in $(git -C "${repo}" rev-list "${since}"..HEAD); do
+	for _file in $(git -C "${repo}" show --pretty="" --name-only "${_commit}"); do
+		packages+=("${_file%%/*}")
+	done
+done
+printf '%s\n' "${packages[@]}"|sort -u
