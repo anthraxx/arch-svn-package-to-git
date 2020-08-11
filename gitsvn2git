@@ -234,7 +234,7 @@ def filter_subdirectory(package_dir: Path, subdirectory: Path) -> None:
         raise e
 
 
-def get_tag_from_pkgbuild(pkgbuild: bytes) -> str:
+def get_tag_from_pkgbuild(pkgbuild: bytes) -> Optional[str]:
     """Extract tag from the PKGBUILD content.
 
     Args:
@@ -248,22 +248,27 @@ def get_tag_from_pkgbuild(pkgbuild: bytes) -> str:
         tmpfile.write(pkgbuild)
         tmpfile.flush()
 
-        p = run(
-            f"bash -c 'source {tmpfile.name} && printf \"%s\\n%s\\n%s\\n\" \"$epoch\" \"$pkgver\" \"$pkgrel\"'",
-            check=True,
-            shell=True,
-            cwd=package_dir,
-            stdout=PIPE,
-            stderr=PIPE,
-        )
-        version_info: List[str] = p.stdout.decode().splitlines()
+        try:
+            p = run(
+                f"bash -c 'source {tmpfile.name} && printf \"%s\\n%s\\n%s\\n\" \"$epoch\" \"$pkgver\" \"$pkgrel\"'",
+                check=True,
+                shell=True,
+                cwd=package_dir,
+                stdout=PIPE,
+                stderr=PIPE,
+            )
+            version_info: List[str] = p.stdout.decode().splitlines()
 
-    epoch, pkgver, pkgrel = version_info
+            epoch, pkgver, pkgrel = version_info
 
-    if epoch:
-        return f"release/{epoch}-{pkgver}-{pkgrel}"
+            if epoch:
+                return f"release/{epoch}-{pkgver}-{pkgrel}"
 
-    return f"release/{pkgver}-{pkgrel}"
+            return f"release/{pkgver}-{pkgrel}"
+
+        except CalledProcessError as e:
+            warn3(f'PKGBUILD is not parsable: {e.stderr.decode()}')
+            return None
 
 
 def get_pkgbuild(package_dir: Path, file: str, commit: str) -> Optional[bytes]:
@@ -344,6 +349,9 @@ def get_releases(
             file_hash = md5.hexdigest()
 
             tag = get_tag_from_pkgbuild(pkgbuild)
+            if not tag:
+                warn3(f'Error parsing PKGBUILD from {commit_hash} - Skipping')
+                continue
 
             release = Release(tag, file_hash, commit_hash)
             releases.append(release)
