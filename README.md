@@ -7,18 +7,24 @@ collection and history/content rewrite.
 
 ### Requirements:
 - Python 3.8
-- git-filter-repo (this package is in `community`)
+- git
+- git-filter-repo
+- bash
+- findutils
+- coreutils
+- grep
 
 ### Rewrites:
 - Replace author name and e-mail via `AUTHORS` file
 - Strip git-svn related git-svn-id from commit messages
 - Strip svn specific $Id$ property
+- Tag all repository releases
 
 ### GitSVN checkout:
 
 The gitsvn checkout must be a bare clone that is setup as a mirror in order
 to make single branch cloning work appropriately and be able to easily fetch
-and update from the remote for all branch related refs.
+all branch related refs from the remote.
 
 git config:
 ```
@@ -28,12 +34,16 @@ git config:
 	mirror = true
 ```
 
+The gitsvn-repo-helper can aid in setting the require config:
+
+```
+gitsvn-repo-helper configure repos/community
+```
+
 
 ### Usage:
 
     gitsvn2git INPUT_GIT TARGET_DIR [PACKAGE]...
-
-    gitsvn2git INPUT_GIT --list-packages
 
 
 ### Arguments:
@@ -71,12 +81,20 @@ git config:
 
     gitsvn2git repos/community community-converted capstone radare2
 
-##### List bare clone packages:
-
-    gitsvn2git repos/community --list-packages
-
 ##### Parallelize:
 
     parallel gitsvn2git repos/community community-converted ::: repos/community/*
 
-    parallel gitsvn2git repos/community community-converted ::: $(gitsvn2git repos/community --list-packages)
+    parallel gitsvn2git repos/community community-converted ::: $(gitsvn-repo-helper list repos/community)
+
+##### List bare clone packages:
+
+    gitsvn-repo-helper list repos/community
+
+##### List bare clone package changes since last fetch:
+
+    gitsvn-repo-helper since bec4565de repos/community
+
+##### Fetch bare clone repo and print previous HEAD:
+
+    gitsvn-repo-helper fetch repos/community

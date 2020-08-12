@@ -1,0 +1,93 @@
+#!/bin/bash
+
+usage() {
+    cat <<- _EOF_
+		Usage: ${BASH_SOURCE[0]} list REPO
+		       Returns all packages in the target repo.
+
+		   or: ${BASH_SOURCE[0]} since COMMIT REPO
+		       Returns all packages fetched in the target repo since a specific commit.
+
+		   or: ${BASH_SOURCE[0]} fetch REPO
+		       Fetches the target repo and prints the old HEAD to be able to query for changed packages.
+
+		   or: ${BASH_SOURCE[0]} configure REPO
+		       Configure the target bare repo as mirror and fetch all refs.
+_EOF_
+}
+
+list_packages() {
+	repo="$1"
+	grep refs/heads/packages/ "${repo}"/packed-refs | \
+		sed -E 's|.+ refs/heads/packages/(.+)|\1|'
+}
+
+list_packages_since() {
+	repo="$2"
+	since="$(git -C "${repo}" rev-parse "${1}")"
+	head="$(git -C "${repo}" rev-parse refs/heads/master)"
+	if [[ "${head}" == "${since}" ]]; then
+		return
+	fi
+	git -C "${repo}" rev-list "${since}"..refs/heads/master | \
+		xargs git -C "${repo}" show --pretty="" --name-only | \
+		sed -E 's|([^/]+)/.*|\1|' | \
+		sort -u
+}
+
+fetch() {
+	repo="$1"
+	anchor="$(git -C "${repo}" rev-parse refs/heads/master)"
+	printf "Current HEAD: %s\n" "${anchor}"
+	printf "Fetching changes, this can take a while...\n"
+	git -C "${repo}" fetch origin
+	head="$(git -C "${repo}" rev-parse refs/heads/master)"
+	printf "old HEAD: %s\n" "${anchor}"
+	printf "new HEAD: %s\n" "${head}"
+	if [[ "${head}" != "${anchor}" ]]; then
+		printf "Command to list changed packages: \n"
+		printf "  # %s since %s %s\n" "${BASH_SOURCE[0]}" "${anchor}" "${repo}"
+	fi
+}
+
+configure() {
+	repo="$1"
+	git -C "${repo}" config --local remote.origin.fetch "+refs/*:refs/*"
+	git -C "${repo}" config --local remote.origin.mirror true
+}
+
+require_args() {
+	if (( $1 < $2 )); then
+		usage
+		exit 1
+	fi
+}
+
+case $1 in
+	fetch)
+		shift;
+		require_args $# 1
+		fetch "$1"
+		;;
+	list)
+		shift;
+		require_args $# 1
+		list_packages "$1"
+		;;
+	since)
+		shift;
+		require_args $# 2
+		list_packages_since "$1" "$2"
+		;;
+	configure)
+		shift;
+		require_args $# 1
+		configure "$1"
+		;;
+	-h|--help)
+		usage
+		;;
+	*)
+		usage
+		exit 1
+esac
