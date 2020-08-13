@@ -21,17 +21,46 @@ class Style:
     BLUE = "\033[34m"
 
 
+class Version:
+    """Version information.
+
+    Attributes:
+        epoch (Optional[str]): epoch qualifier
+        pkgver (str): primary version
+        pkgrel (str): release fragment
+    """
+
+    def __init__(self, epoch: Optional[str], pkgver: str, pkgrel: str):
+        self.epoch: Optional[str] = epoch
+        self.pkgver: str = pkgver
+        self.pkgrel: str = pkgrel
+
+    @property
+    def tag(self):
+        if self.epoch:
+            return f"release-{self.epoch}-{self.pkgver}-{self.pkgrel}"
+        return f"release-{self.pkgver}-{self.pkgrel}"
+
+    def __str__(self):
+        if self.epoch:
+            return f"{self.epoch}:{self.pkgver}-{self.pkgrel}"
+        return f"{self.pkgver}-{self.pkgrel}"
+
+    def __repr__(self):
+        return str(self)
+
+
 class Release:
     """Release information.
 
     Attributes:
-        tag (str): release tag.
+        version (Version): version information.
         file_hash (str): PKGBUILD file hash.
         input_commit (str): commit of input git repository.
     """
 
-    def __init__(self, tag: str, file_hash: str, input_commit: str):
-        self.tag: str = tag
+    def __init__(self, version: Version, file_hash: str, input_commit: str):
+        self.version: Version = version
         self.file_hash: str = file_hash
         self.input_commit: str = input_commit
         self.target_commit: Optional[str] = None
@@ -39,7 +68,7 @@ class Release:
     def __repr__(self):
         return str(
             {
-                "tag": self.tag,
+                "version": self.version,
                 "file_hash": self.file_hash,
                 "input_commit": self.input_commit,
                 "target_commit": self.target_commit,
@@ -229,13 +258,13 @@ def filter_subdirectory(package_dir: Path, subdirectory: Path) -> None:
         raise e
 
 
-def get_tag_from_pkgbuild(pkgbuild: bytes) -> Optional[str]:
-    """Extract tag from the PKGBUILD content.
+def get_version_from_pkgbuild(pkgbuild: bytes) -> Optional[Version]:
+    """Extract version from the PKGBUILD content.
 
     Args:
         pkgbuild (bytes): PKGBUILD content.
     Returns:
-        str: release tag formatted.
+        Optional[Version]: version information extracted from the PKGBUILD.
     """
     # It needs to generate a temporary file to be parsed in bash since it got
     # no direct access to PKGBUILD in the filesystem.
@@ -253,14 +282,8 @@ def get_tag_from_pkgbuild(pkgbuild: bytes) -> Optional[str]:
                 stderr=PIPE,
             )
             version_info: List[str] = p.stdout.decode().splitlines()
-
             epoch, pkgver, pkgrel = version_info
-
-            if epoch:
-                return f"release/{epoch}-{pkgver}-{pkgrel}"
-
-            return f"release/{pkgver}-{pkgrel}"
-
+            return Version(epoch, pkgver, pkgrel)
         except CalledProcessError as e:
             warn3(f'PKGBUILD is not parsable: {e.stderr.decode()}')
             return None
@@ -343,12 +366,12 @@ def get_releases(
             md5 = hashlib.md5(pkgbuild)
             file_hash = md5.hexdigest()
 
-            tag = get_tag_from_pkgbuild(pkgbuild)
-            if not tag:
+            version = get_version_from_pkgbuild(pkgbuild)
+            if not version:
                 warn3(f'Error parsing PKGBUILD from {commit_hash} - Skipping')
                 continue
 
-            release = Release(tag, file_hash, commit_hash)
+            release = Release(version, file_hash, commit_hash)
             releases.append(release)
 
             debug3(f'Found release: {release}')
@@ -446,29 +469,29 @@ def tag_releases(package_dir: Path, releases: List[Release]):
             md5 = hashlib.md5(pkgbuild)
             file_hash = md5.hexdigest()
 
-            try:
-                release = release_map[file_hash]
-                tag = release.tag
-            except KeyError:
+            if file_hash not in release_map:
                 continue
 
+            release = release_map[file_hash]
+            version = release.version
+
             run(
-                f"git tag -f {tag} {commit} -m 'Package release {tag}'",
+                f"git tag -f {version.tag} {commit} -m 'Package release {version}'",
                 check=True,
                 cwd=package_dir,
                 shell=True,
             )
             release.target_commit = commit
-            released[tag] = release
+            released[version.tag] = release
             debug3(f'Tagged {commit} for release {release}')
     except CalledProcessError as e:
         error1("Error tagging releases...")
         raise e
 
     for release in releases:
-        if release.tag in released:
+        if release.version.tag in released:
             continue
-        error2(f"Failed to tag {release.tag} with file-hash {release.file_hash} of input-commit {release.input_commit}")
+        error2(f"Failed to tag {release.version.tag} for version {release.version} with file-hash {release.file_hash} of input-commit {release.input_commit}")
 
 
 def clean_up(package_dir: Path):
