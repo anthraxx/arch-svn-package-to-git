@@ -166,22 +166,32 @@ def error3(error: str):
         breakpoint()
 
 
-def warn2(warn: str):
+def warn2(warn: str, pedantic: bool = False):
     """Pretty format 2nd level warn message.
 
     Args:
         warn (str): message to format.
+        pedantic (bool): wether to treat this warning in pedantic mode as error.
     """
+    if os.environ.get('GITSVN2GIT_WERROR') or (pedantic and os.environ.get('GITSVN2GIT_PEDANTIC')):
+        error2(warn)
+        return
+
     s = Style()
     print(f"{s.BOLD}{s.YELLOW}  ->{s.RESET}{s.BOLD} {warn}{s.RESET}")
 
 
-def warn3(warn: str):
+def warn3(warn: str, pedantic: bool = False):
     """Pretty format 2nd level warn message.
 
     Args:
         warn (str): message to format.
+        pedantic (bool): wether to treat this warning in pedantic mode as error.
     """
+    if os.environ.get('GITSVN2GIT_WERROR') or (pedantic and os.environ.get('GITSVN2GIT_PEDANTIC')):
+        error3(warn)
+        return
+
     s = Style()
     print(f"{s.BOLD}{s.YELLOW}    ·>{s.RESET}{s.BOLD} {warn}{s.RESET}")
 
@@ -514,7 +524,11 @@ def tag_releases(package_dir: Path, releases: List[Release]):
     for release in releases:
         if release.version.tag in released:
             continue
-        error2(f"Failed to tag {release.version.tag} for version {release.version} with file-hash {release.file_hash} of input-commit {release.input_commit}")
+
+        warn2(f"Failed to tag {release.version.tag} for version {release.version} with file-hash {release.file_hash} of input-commit {release.input_commit}", pedantic=True)
+
+    if not released:
+        error2(f"Failed to tag any out of {len(releases)} releases")
 
 
 def clean_up(package_dir: Path):

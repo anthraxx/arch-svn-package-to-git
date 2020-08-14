@@ -71,6 +71,12 @@ gitsvn-repo-helper configure repos/community
 - `GITSVN2GIT_DEBUG`
 **synopsis:** If set, print debug messages during execution
 
+- `GITSVN2GIT_PEDANTIC`
+**synopsis:** If set, treat some warnings like missing release tags as errors. Useful in combination with `GITSVN2GIT_BREAKPOINT_ON_ERROR` for debugging.
+
+- `GITSVN2GIT_WERROR`
+**synopsis:** If set, treat all warnings as errors. Useful in combination with `GITSVN2GIT_BREAKPOINT_ON_ERROR` for debugging.
+
 
 ### Examples:
 ##### Whole repository:
