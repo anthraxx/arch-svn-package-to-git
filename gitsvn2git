@@ -3,11 +3,12 @@ import hashlib
 import os
 import shutil
 import sys
+import re
 
 from pathlib import Path
 from subprocess import CalledProcessError, PIPE, run
 from tempfile import NamedTemporaryFile
-from typing import List, Tuple, Optional
+from typing import List, Dict, Tuple, Optional
 
 
 class Style:
@@ -57,13 +58,20 @@ class Release:
         version (Version): version information.
         file_hash (str): PKGBUILD file hash.
         input_commit (str): commit of input git repository.
+        target_commit (Optional[str]): target commit to tag.
+        name (str): author name.
+        email (str): author email.
+        date (str): release date.
     """
 
-    def __init__(self, version: Version, file_hash: str, input_commit: str):
+    def __init__(self, version: Version, file_hash: str, input_commit: str, name: str, email: str, date: str):
         self.version: Version = version
         self.file_hash: str = file_hash
         self.input_commit: str = input_commit
         self.target_commit: Optional[str] = None
+        self.name: str = name
+        self.email: str = email
+        self.date: str = date
 
     def __repr__(self):
         return str(
@@ -72,6 +80,35 @@ class Release:
                 "file_hash": self.file_hash,
                 "input_commit": self.input_commit,
                 "target_commit": self.target_commit,
+                "author": f'{self.name} <{self.email}>',
+                "date": self.date
+            }
+        )
+
+
+class Author:
+    """Author information.
+
+    Attributes:
+        name (str): author name.
+        email (str): author email.
+        old_name (str): old name for mapping.
+    """
+
+    def __init__(self, name: str, email: str, old_name: str):
+        self.name: str = name
+        self.email: str = email
+        self.old_name: str = old_name
+
+    def __str__(self):
+        return f'{self.name} <{self.email}>'
+
+    def __repr__(self):
+        return str(
+            {
+                "name": self.name,
+                "email": self.email,
+                "old_name": self.old_name,
             }
         )
 
@@ -196,11 +233,11 @@ def warn3(warn: str, pedantic: bool = False):
     print(f"{s.BOLD}{s.YELLOW}    ·>{s.RESET}{s.BOLD} {warn}{s.RESET}")
 
 
-def parse_input() -> Tuple[Path, Path, List[str]]:
+def parse_input() -> Tuple[Path, Path, List[str], Dict[str, Author]]:
     """Parse input arguments.
 
     Returns:
-        tuple(Path, Path, list): input_dir, target_dir and list of packages.
+        tuple(Path, Path, List[str], Dict[str, Author]): input_dir, target_dir, list of packages and list of authors by old_name.
     """
     if len(sys.argv) < 3:
         print(f"Usage: {__file__} INPUT_DIR TARGET_DIR [PACKAGE(s)]...")
@@ -231,10 +268,20 @@ def parse_input() -> Tuple[Path, Path, List[str]]:
     else:
         packages = list(map(lambda path: Path(path).name, package_refs))
 
+    authors: Dict[str, Author] = {}
+    with open(Path(__file__).parent.joinpath('AUTHORS')) as f:
+        for line in filter(lambda line: not line.startswith('#'), f.read().splitlines()):
+            matches = re.search(r'([\w ]+) <(.+)> (\w+)', line)
+            if not matches:
+                error1(f'Invalid author line: {line}')
+                continue
+            author = Author(*matches.groups())
+            authors[author.old_name] = author
+
     target_dir = Path(sys.argv[2])
     target_dir.mkdir(exist_ok=True, parents=True)
 
-    return input_dir, target_dir, packages
+    return input_dir, target_dir, packages, authors
 
 
 def clone_repository(input_dir: Path, package_dir: Path):
@@ -365,17 +412,20 @@ def get_releases(
     try:
         releases = []
         p = run(
-            f"git log --pretty='%h %s' --grep='{grep}' -- repos",
+            f"git log --pretty='%h%n%s%n%an%n%ae%n%ad%n%n' --grep='{grep}' -- repos",
             check=True,
             cwd=package_dir,
             shell=True,
             stdout=PIPE,
         )
-        commits = p.stdout.decode().splitlines()
+        commits = [x for x in p.stdout.decode().split('\n\n\n') if x]
         for commit in commits:
             commit_hash: str
             subject: str
-            commit_hash, subject = commit.split(maxsplit=1)
+            name: str
+            email: str
+            date: str
+            commit_hash, subject, name, email, date = commit.splitlines()
             subject = subject.split('archrelease: ', maxsplit=1)[1]
 
             release_repos: List[str]
@@ -408,7 +458,7 @@ def get_releases(
                 warn3(f'Error parsing PKGBUILD from {commit_hash} - Skipping')
                 continue
 
-            release = Release(version, file_hash, commit_hash)
+            release = Release(version, file_hash, commit_hash, name, email, date)
             releases.append(release)
 
             debug3(f'Found release: {release}')
@@ -475,12 +525,13 @@ def rewrite_history(package_dir: Path):
         raise e
 
 
-def tag_releases(package_dir: Path, releases: List[Release]):
+def tag_releases(package_dir: Path, releases: List[Release], authors: Dict[str, Author]):
     """Generate git tags from the release objects.
 
     Args:
         package_dir (Path): package directory.
         releases (List[Release]): list of releases.
+        authors (Dict[str, Author]): author mapping.
     """
     msg2("Tagging releases...")
     release_map = {}
@@ -512,11 +563,22 @@ def tag_releases(package_dir: Path, releases: List[Release]):
             release = release_map[file_hash]
             version = release.version
 
+            # Set git specific environment vars to reflect archrelease information
+            author = authors[release.name]
+            env = os.environ.copy()
+            env['GIT_AUTHOR_DATE'] = release.date
+            env['GIT_COMMITTER_DATE'] = release.date
+            env['GIT_AUTHOR_NAME'] = author.name
+            env['GIT_COMMITTER_NAME'] = author.name
+            env['GIT_AUTHOR_EMAIL'] = author.email
+            env['GIT_COMMITTER_EMAIL'] = author.email
+
             run(
                 f"git tag -f {version.tag} {commit} -m 'Package release {version}'",
                 check=True,
                 cwd=package_dir,
                 shell=True,
+                env=env,
             )
             release.target_commit = commit
             released[version.tag] = release
@@ -575,7 +637,7 @@ def clean_up(package_dir: Path):
 
 
 if __name__ == "__main__":
-    input_dir, target_dir, packages = parse_input()
+    input_dir, target_dir, packages, authors = parse_input()
     msg1(f"Using input directory: {input_dir}")
     msg1(f"Using target directory: {target_dir}")
 
@@ -591,5 +653,5 @@ if __name__ == "__main__":
         releases = get_releases(package_dir)
         filter_subdirectory(package_dir, Path("trunk"))
         rewrite_history(package_dir)
-        tag_releases(package_dir, releases)
+        tag_releases(package_dir, releases, authors)
         clean_up(package_dir)
