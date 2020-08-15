@@ -532,7 +532,7 @@ def tag_releases(package_dir: Path, releases: List[Release]):
         warn2(f"Failed to tag {release.version.tag} for version {release.version} with file-hash {release.file_hash} of input-commit {release.input_commit}", pedantic=True)
 
     if not released:
-        error2(f"Failed to tag any out of {len(releases)} releases")
+        warn2(f"Failed to tag any out of {len(releases)} releases", pedantic=True)
 
 
 def clean_up(package_dir: Path):
