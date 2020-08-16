@@ -39,8 +39,10 @@ class Version:
     @property
     def tag(self):
         if self.epoch:
-            return f"release-{self.epoch}-{self.pkgver}-{self.pkgrel}"
-        return f"release-{self.pkgver}-{self.pkgrel}"
+            tag = f"release-{self.epoch}-{self.pkgver}-{self.pkgrel}"
+        else:
+            tag = f"release-{self.pkgver}-{self.pkgrel}"
+        return tag.replace('~', '.')
 
     def __str__(self):
         if self.epoch:
