@@ -8,7 +8,7 @@ import re
 from pathlib import Path
 from subprocess import CalledProcessError, PIPE, run
 from tempfile import NamedTemporaryFile
-from typing import List, Dict, Tuple, Optional
+from typing import List, Dict, Set, Tuple, Optional
 
 
 class Style:
@@ -258,12 +258,16 @@ def parse_input() -> Tuple[Path, Path, List[str], Dict[str, Author]]:
                 continue
             package_refs.append(ref.split()[1])
 
-    packages = []
+    packages: List[str] = []
     if len(sys.argv) > 3:
-        for package in sys.argv[3:]:
-            if f'refs/heads/packages/{package}' not in package_refs:
-                error1(f"Package ref not found: {package}")
-                continue
+        if '--update' == sys.argv[3]:
+            anchor, head = fetch_repository(input_dir)
+            packages = get_package_updates_since(input_dir, anchor)
+        else:
+            for package in sys.argv[3:]:
+                if f'refs/heads/packages/{package}' not in package_refs:
+                    error1(f"Package ref not found: {package}")
+                    continue
             packages.append(package)
     else:
         packages = list(map(lambda path: Path(path).name, package_refs))
@@ -282,6 +286,65 @@ def parse_input() -> Tuple[Path, Path, List[str], Dict[str, Author]]:
     target_dir.mkdir(exist_ok=True, parents=True)
 
     return input_dir, target_dir, packages, authors
+
+
+def fetch_repository(input_dir: Path) -> Tuple[str, str]:
+    """Fetch the input repository and return anchor and current head.
+
+    Args:
+        input_dir (Path): input repository directory.
+
+    Returns:
+        Tuple[str, str]: anchor commit before fetch, head commit after fetch.
+    """
+    try:
+        p = run(f"git -C '{input_dir}' rev-parse refs/heads/master", check=True, shell=True, stdout=PIPE)
+        anchor = p.stdout.decode().strip()
+
+        msg1("Fetching input repository, may take a while...")
+        run(f"git -C '{input_dir}' fetch origin", check=True, shell=True)
+
+        p = run(f"git -C '{input_dir}' rev-parse refs/heads/master", check=True, shell=True, stdout=PIPE)
+        head = p.stdout.decode().strip()
+
+        msg2(f"Updated input repository from {anchor} to {head}")
+        return anchor, head
+    except CalledProcessError as e:
+        error1(f"Error fetching repository {input_dir}...")
+        raise e
+
+
+def get_package_updates_since(input_dir: Path, since: str) -> List[str]:
+    """Fetch the package input repository.
+
+    Args:
+        input_dir (Path): input repository directory.
+        since (str): anchor commit to search for updated packages.
+
+    Returns:
+        List[str]: all packages that got updated since the specified commit.
+    """
+    try:
+        p = run(f"git -C '{input_dir}' rev-parse refs/heads/master", check=True, shell=True, stdout=PIPE)
+        head = p.stdout.decode().strip()
+
+        if since == head:
+            return []
+
+        p = run(f'git -C "{input_dir}" rev-list "{since}"..refs/heads/master', check=True, shell=True, stdout=PIPE)
+        commits: List[str] = p.stdout.decode().splitlines()
+
+        packages: Set[str] = set()
+        for commit in commits:
+            p = run(f'git -C "{input_dir}" show --pretty="" --name-only "{commit}"', check=True, shell=True, stdout=PIPE)
+            names: List[str] = p.stdout.decode().splitlines()
+            for name in names:
+                packages.add(name.split('/')[0])
+
+        return list(sorted(packages))
+    except CalledProcessError as e:
+        error1(f"Error getting package updates of repository {input_dir}...")
+        raise e
 
 
 def clone_repository(input_dir: Path, package_dir: Path):

@@ -59,7 +59,7 @@ gitsvn-repo-helper configure repos/community
 
 
 - `PACKAGE [STRING]...`
-**synopsis:** Set the packages that should be converted to separate git repositories
+**synopsis:** Set the packages that should be converted to separate git repositories. In case `--update` is the only passed value, fetch the `INPUT_GIT` repository and sequencially convert all updated packages.
 **default:** All packages of the specified input repository
 
 
