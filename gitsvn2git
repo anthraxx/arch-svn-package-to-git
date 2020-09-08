@@ -585,6 +585,28 @@ def rewrite_history(package_dir: Path):
             shell=True,
             stdout=PIPE,
         )
+        msg3("Removing unwanted artifacts...")
+        run(
+            (
+                "git-filter-repo --invert-paths "
+                "--path-glob '*.pkg.tar.*' "
+                "--path-glob '*.tgz' "
+                "--path-glob '*.tar.gz' "
+                "--path-glob '*.tar.xz' "
+                "--path-glob '*.tar.bz2' "
+                "--path-glob '*.deb' "
+                "--path-glob '*.zip' "
+                "--path-glob '*.jar' "
+                "--path-glob '*.log' "
+                "--path-glob '*.sig' "
+                "--path-glob '*.sign' "
+                "--path-glob '*.asc' "
+            ),
+            check=True,
+            cwd=package_dir,
+            shell=True,
+            stdout=PIPE,
+        )
     except CalledProcessError as e:
         error1("Error rewriting history...")
         raise e

@@ -18,6 +18,7 @@ collection and history/content rewrite.
 - Replace author name and e-mail via `AUTHORS` file
 - Strip git-svn related git-svn-id from commit messages
 - Strip svn specific $Id$ property
+- Filters unwanted artifacts like tarballs, logfiles etc
 - Tag all repository releases
 
 ### GitSVN checkout:
