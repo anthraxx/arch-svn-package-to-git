@@ -563,11 +563,28 @@ def rewrite_history(package_dir: Path):
             shell=True,
             stdout=PIPE,
         )
-        msg3("Removing git-svn-id from commit messages...")
+        msg3("Removing git-svn-id and unify shortlog from commit messages...")
         run(
             (
-                "git-filter-repo --message-callback "
-                '\'return re.sub(b"\\ngit-svn-id.*\\n", b"", message)\''
+                "git-filter-repo --message-callback '"
+                '# filter regular git-svn-id in commit messages\n'
+                'message = re.sub(b"\\ngit-svn-id.*\\n", b"", message)\n'
+                '# fix shortlog lines not split by empty line\n'
+                'message = re.sub(b"^(upgpkg: .+\\-\\d+)\\n(.+)", b"\\\\1\\n\\n\\\\2", message)\n'
+                'lines = message.splitlines()\n'
+                '# on multiline messages that end with a pkgrel, try to join for better shortlog\n'
+                'if len(lines) >= 3 and len(lines[1]) == 0 and len(lines[2]) < 82 and len(lines[2]) > 0 and re.match(b"^upgpkg: .+\\-\\d+$", lines[0]):\n'
+                '    # remove hyphen if shortlog starts with one\n'
+                '    shortlog = lines[2].strip() if not lines[2].startswith(b"- ") else lines[2][2:].strip()\n'
+                '    message = lines[0] + b": " + shortlog\n'
+                '    # join the rest of the lines\n'
+                '    if len(lines) > 3:\n'
+                '        message += b"\\n\\n" + b"\\n".join(lines[3:])\n'
+                '# replace upgpkg part for shortlog with extra details as its covered by git tags\n'
+                'message = re.sub(b"^upgpkg: .+\\-\\d+:? +", b"", message)\n'
+                '# replace pkgbase in upgpkg messages as we have one repo per pkgbase\n'
+                'message = re.sub(b"^(upgpkg: ).+ (.+\\-\\d)", b"\\\\1\\\\2", message)\n'
+                "return message.strip()'"
             ),
             check=True,
             cwd=package_dir,

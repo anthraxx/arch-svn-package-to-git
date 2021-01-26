@@ -20,6 +20,7 @@ collection and history/content rewrite.
 - Strip svn specific $Id$ property
 - Filters unwanted artifacts like tarballs, logfiles etc
 - Tag all repository releases
+- Produce readable shortlog commit messages if possible
 
 ### GitSVN checkout:
 
