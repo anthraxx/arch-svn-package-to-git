@@ -581,7 +581,7 @@ def rewrite_history(package_dir: Path):
                 '    if len(lines) > 3:\n'
                 '        message += b"\\n\\n" + b"\\n".join(lines[3:])\n'
                 '# replace upgpkg part for shortlog with extra details as its covered by git tags\n'
-                'message = re.sub(b"^upgpkg: .+\\-\\d+:? +", b"", message)\n'
+                'message = re.sub(b"^upgpkg: .+\\-\\d+[:;]? +", b"", message)\n'
                 '# replace pkgbase in upgpkg messages as we have one repo per pkgbase\n'
                 'message = re.sub(b"^(upgpkg: ).+ (.+\\-\\d)", b"\\\\1\\\\2", message)\n'
                 "return message.strip()'"
