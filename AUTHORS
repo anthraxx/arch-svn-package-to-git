@@ -3,7 +3,7 @@
 # Example 2: New name <newemail@arch.com> <oldmail@other.net>
 # Example 3: New name <newemail@arch.com> Old name <oldmail@other.net>
 Levente Polyak <anthraxx@archlinux.org> anthraxx
-Johannes Löthberg <johannes@kyriasis.com> demize
+Johannes Löthberg <demize@archlinux.org> demize
 Aaron Griffin <aaron@archlinux.org> aaron
 Allan McRae <allan@archlinux.org> allan
 kpcyrd <kpcyrd@archlinux.org> kpcyrd
@@ -12,15 +12,15 @@ Robin Broda <coderobe@archlinux.org> coderobe
 Giancarlo Razzolini <grazzolini@archlinux.org> grazzolini
 David Runge <dvzrv@archlinux.org> dvzrv
 Morten Linderud <foxboron@archlinux.org> foxboron
-Maxim Baz <git@maximbaz.com> maximbaz
+Maxim Baz <maximbaz@archlinux.org> maximbaz
 Abhishek Dasgupta <abhidg@gmail.com> abhidg
 Andrzej Giniewicz <gginiu@gmail.com> aginiewicz
 Brett Cornwall <ainola@archlinux.org> ainola
 Alexander Baldeck <alexander@archlinux.org> alexander
 Alexander Fehr <pizzapunk@gmail.com> alexanderf
-Maxime Gauduin <alucryd@alucryd.xyz> alucryd
+Maxime Gauduin <alucryd@archlinux.org> alucryd
 Pierre Neidhardt <ambrevar@gmail.com> ambrevar
-Anatol Pomozov <anatol.pomozov@gmail.com> anatolik
+Anatol Pomozov <anatolik@archlinux.org> anatolik
 Andrea Scarpino <andrea@archlinux.org> andrea
 Andreas Radke <andyrtr@archlinux.org> andyrtr
 Ángel Velásquez <angvp@archlinux.org> angvp
@@ -30,11 +30,11 @@ Antonio Rojas <arojas@archlinux.org> arojas
 Aaron Schaefer <aaron@elasticdog.com> aschaefer
 Balló György <ballogyor+arch@gmail.com> bgyorgy
 Gaetan Bisson <bisson@archlinux.org> bisson
-Florian Pritz <bluewind@xinu.at> bluewind
+Florian Pritz <bluewind@archlinux.org> bluewind
 Bartłomiej Piotrowski <bpiotrowski@archlinux.org> bpiotrowski
-Connor Behan <connor.behan@gmail.com> cbehan
+Connor Behan <cbehan@archlinux.org> cbehan
 Chris Brannon <chris@the-brannons.com> cbrannon
-Brad Fanella <bradfanella@gmail.com> cesura
+Brad Fanella <cesura@archlinux.org> cesura
 Federico Cinelli <cinelli.federico@gmail.com> cinelli
 Corrado Primier <bardo@aur.archlinux.org> cprimier
 Gavin Bisesi <daenyth+arch@gmail.com> daenyth
@@ -42,100 +42,100 @@ Dale Blount <dale@archlinux.org> dale
 Damir Perisa <damir@archlinux.org> damir
 Dan McGee <dan@archlinux.org> dan
 Daniel Isenmann <daniel@archlinux.org> daniel
-Daurnimator <quae+archlinux@daurnimator.com> daurnimator
-Daniel Bermond <danielbermond@gmail.com> dbermond
+Daurnimator <daurnimator@archlinux.org> daurnimator
+Daniel Bermond <dbermond@archlinux.org> dbermond
 Daniel Griffiths <ghost1227@archlinux.us> dgriffiths
 Jonas Witschel <diabonas@archlinux.org> diabonas
 Михаил Страшун <public@dicebot.lv> dicebot
 Dieter Plaetinck <dieter@plaetinck.be> dieter
-Gerardo Pozzi <vmlinuz386@gmail.com> djgera
+Gerardo Pozzi <djgera@archlinux.org> djgera
 Douglas Soares de Andrade <dsandrade@gmail.com> douglas
-Dave Reisner <d@falconindy.com> dreisner
-Evangelos Foutras <evangelos@foutrelis.com> foutrelis
-Evangelos Foutras <evangelos@foutrelis.com> foutrelis2
+Dave Reisner <dreisner@archlinux.org> dreisner
+Evangelos Foutras <foutrelis@archlinux.org> foutrelis
+Evangelos Foutras <foutrelis@archlinux.org> foutrelis2
 Daniel Wallace <danielwallace@gtmanfred.com> dwallace
 Eduardo Romero <k3nsai@gmail.com> eduardo
 Eric Bélanger <eric@archlinux.org> eric
 Eli Schwartz <eschwartz@archlinux.org> eschwartz
-Ivy Foster <escondida@iff.ink> escondida
-Christian Hesse <mail@eworm.de> eworm
+Ivy Foster <iff@archlinux.org> escondida
+Christian Hesse <eworm@archlinux.org> eworm
 Alexandre Filgueira <faidoc@gmail.com> faidoc
-Jiachen Yang <farseerfc@gmail.com> farseerfc
+Jiachen Yang <farseerfc@archlinux.org> farseerfc
 Felix Yan <felixonmars@archlinux.org> felixonmars
 Martin Wimpress <martin+arch@flexion.org> flexiondotorg
 Thore Bödecker <foxxx0@archlinux.org> foxxx0
 François Charette <francois@archlinux.org> francois
-Frederik Schwan <frederik.schwan@linux.com> freswa
+Frederik Schwan <freswa@archlinux.org> freswa
 Geoffroy Carrier <geoffroy@archlinux.org> geoffroy
-Giovanni Scafora <linuxmania@gmail.com> giovanni
-Guillaume Alaux <guillaume@alaux.net> guillaume
+Giovanni Scafora <giovanni@archlinux.org> giovanni
+Guillaume Alaux <guillaume@archlinux.org> guillaume
 Justin Kromlinger <hashworks@archlinux.org> hashworks
 Jan Alexander Steffens <heftig@archlinux.org> heftig
 Hugo Doria <hugodoria@gmail.com> hugo
 Ionuț Mircea Bîru <ibiru@archlinux.org> ibiru
 Imanol Celaya <ornitorrincos@archlinux-es.org> icelaya
-Ike Devolder <ike.devolder@gmail.com> idevolder
+Ike Devolder <ike.devolder@archlinux.org> idevolder
 James Rayner <james@archlinux.org> james
 Jason Chu <jason@archlinux.org> jason
 Jonathan Conder <jonno.conder@gmail.com> jconder
 Jeff Mickey <jeff@archlinux.org> jeff
-Jelle van der Waa <jelle@vdwaa.nl> jelle
+Jelle van der Waa <jelle@archlinux.org> jelle
 Jan de Groot <jgc@archlinux.org> jgc
-Jerome Leclanche <jerome@leclan.ch> jleclanche
+Jerome Leclanche <jleclanche@archlinux.org> jleclanche
 Jaroslav Lichtblau <svetlemodry@archlinux.org> jlichtblau
 Jonathan Steel <jsteel@archlinux.org> jsteel
 Jarosław Świerczyński <swiergot@gmail.com> jswierczynski
-Jürgen Hötzel <juergen@hoetzel.info> juergen
+Jürgen Hötzel <juergen@archlinux.org> juergen
 Justin Davis <jrcd83@gmail.com> juster
 Kaiting Chen <kaitocracy@gmail.com> kchen
 Kevin Piche <kevin@archlinux.org> kevin
-Konstantin Gizdov <arch@kge.pw> kgizdov
+Konstantin Gizdov <kgizdov@archlinux.org> kgizdov
 Kyle Keen <keenerd@gmail.com> kkeen
-Laurent Carlier <lordheavym@gmail.com> lcarlier
+Laurent Carlier <lordheavym@archlinux.org> lcarlier
 Lukas Fleischer <lfleischer@archlinux.org> lfleischer
 Loui Chang <louipc.ist@gmail.com> loui
 Mateusz Herych <heniekk@gmail.com> mherych
-Massimiliano Torromeo <massimiliano.torromeo@gmail.com> mtorromeo
-Fabio Castelli <webreg@muflone.com> muflone
+Massimiliano Torromeo <mtorromeo@archlinux.org> mtorromeo
+Fabio Castelli <muflone@archlinux.org> muflone
 Paul Mattal <paul@archlinux.org> paul
-Pierre Schmitz <pierre@archlinux.de> pierre
+Pierre Schmitz <pierre@archlinux.org> pierre
 Peter Lewis <plewis@aur.archlinux.org> plewis
 Paulo Matias <matias@archlinux-br.org> pmatias
 Daniel M. Capella <polyzen@archlinux.org> polyzen
-Rémy Oudompheng <oudomphe@phare.normalesup.org> remy
+Rémy Oudompheng <remy@archlinux.org> remy
 Chuck Norris <root@archlinux.org> root
-Ronald van Haren <pressh@gmail.com> ronald
+Ronald van Haren <ronald@archlinux.org> ronald
 Santiago Torres <santiago@archlinux.org> sangy
-Ray Rashif <schivmeister@gmail.com> schiv
+Ray Rashif <schiv@archlinux.org> schiv
 Jakob Gruber <jakob.gruber@gmail.com> schuay
-Sébastien Luttringer <seblu@seblu.net> seblu
+Sébastien Luttringer <seblu@archlinux.org> seblu
 Christian Rebischke <chris.rebischke@archlinux.org> shibumi
 Stefan Husmann <stefan-husmann@t-online.de> shusmann
 Simo Leone <simo@archlinux.org> simo
 speps <speps@gmx.com> speps
-Sergej Pupykin <arch@p5n.pp.ru> spupykin
+Sergej Pupykin <spupykin@archlinux.org> spupykin
 Lukas Jirkovsky <l.jirkovsky@gmail.com> stativ
-Stéphane Gaudreault <stephane.gaudreault@gmail.com> stephane
+Stéphane Gaudreault <stephane@archlinux.org> stephane
 Sven-Hendrik Haase <svenstaro@archlinux.org> svenstaro
 Thomas Dziedzic <gostrc@gmail.com> td123
-Nicola Squartini <tensor5@gmail.com> tensor5
+Nicola Squartini <tensor5@archlinux.org> tensor5
 Thomas S Hatch <thatch45@gmail.com> thatch
 Thayer Williams <thayerwilliams@gmail.com> thayer
 Daniel Micay <danielmicay@gmail.com> thestinger
 Thomas Bächler <thomas@archlinux.org> thomas
 Tobias Kieslich <tobias@archlinux.org> tobias
 Tom Killian <tom@archlinux.org> tom
-Tom Gundersen <teg@jklm.no> tomegun
+Tom Gundersen <tomegun@archlinux.org> tomegun
 Tobias Powalowski <tpowa@archlinux.org> tpowa
 Travis Willard <travis@archlinux.org> travis
 Timothy Redaelli <tredaelli@archlinux.info> tredaelli
 Thorsten Töpper <atsutane-tu@freethoughts.de> ttoepper
-Vesa Kaihlavirta <vegai@iki.fi> vesa
-Dan Printzell <arch@vild.io> wild
-Xyne <xyne@archlinux.ca> xyne
-Chih-Hsuan Yen <yan12125@gmail.com> yan12125
+Vesa Kaihlavirta <bisson@archlinux.org> vesa
+Dan Printzell <wild@archlinux.org> wild
+Xyne <xyne@archlinux.org> xyne
+Chih-Hsuan Yen <yan12125@archlinux.org> yan12125
 Baptiste Jonglez <archlinux@bitsofnetworks.org> zorun
-Alad Wenter <devnull@archlinux.org> alad
+Alad Wenter <alad@archlinux.org> alad
 Andrew Crerar <crerar@archlinux.org> andrewsc
 Bruno Pagani <archange@archlinux.org> archange
 Brad Fanella <cesura@archlinux.org> bfanella
@@ -144,7 +144,7 @@ Eric Bélanger <eric@archlinux.org> ebelanger
 Felix Yan <felixonmars@archlinux.org> fyan
 Ionuț Mircea Bîru <ibiru@archlinux.org> ioni
 Nico Hood <nicohood@archlinux.org> nicohood
-Pierre Schmitz <pierre@archlinux.de> pschmitz
+Pierre Schmitz <pierre@archlinux.org> pschmitz
 Roman Kyrylych <roman@archlinux.org> roman
 Ronald van Haren <ronald@archlinux.org> rvanharen
 Thomas Bächler <thomas@archlinux.org> tbaechler
