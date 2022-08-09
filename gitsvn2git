@@ -569,6 +569,8 @@ def rewrite_history(package_dir: Path):
                 "git-filter-repo --message-callback '"
                 '# filter regular git-svn-id in commit messages\n'
                 'message = re.sub(b"\\ngit-svn-id.*\\n", b"", message)\n'
+                'if message.startswith(b"git-svn-id: ") and 1 == len(message.splitlines()):\n'
+                '    message = re.sub(b"git-svn-id: .*", b"package release", message)\n'
                 '# fix shortlog lines not split by empty line\n'
                 'message = re.sub(b"^(upgpkg: .+\\-\\d+)\\n(.+)", b"\\\\1\\n\\n\\\\2", message)\n'
                 'lines = message.splitlines()\n'
@@ -584,6 +586,8 @@ def rewrite_history(package_dir: Path):
                 'message = re.sub(b"^upgpkg: .+\\-\\d+[:;]? +", b"", message)\n'
                 '# replace pkgbase in upgpkg messages as we have one repo per pkgbase\n'
                 'message = re.sub(b"^(upgpkg: ).+ (.+\\-\\d)", b"\\\\1\\\\2", message)\n'
+                'if not message.strip():\n'
+                '    message = b"package update"\n'
                 "return message.strip()'"
             ),
             check=True,
