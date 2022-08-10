@@ -101,15 +101,15 @@ gitsvn-repo-helper configure repos/community
 
 ##### Parallelize:
 
-    parallel gitsvn2git repos/community community-converted ::: repos/community/*
+    parallel --bar gitsvn2git repos/community community-converted ::: repos/community/*
 
-    parallel gitsvn2git repos/community community-converted ::: $(gitsvn-repo-helper list repos/community)
+    parallel --bar gitsvn2git repos/community community-converted ::: $(gitsvn-repo-helper list repos/community)
 
 ##### Fetch source repo and re-convert all updated packages:
 
 	gitsvn2git repos/community community-converted --update
 
-	gitsvn-repo-helper fetch --list repos/community | parallel --no-run-if-empty gitsvn2git repos/community community-converted
+	gitsvn-repo-helper fetch --list repos/community | parallel --no-run-if-empty --bar gitsvn2git repos/community community-converted
 
 ##### List bare clone packages:
 
