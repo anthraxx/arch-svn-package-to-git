@@ -308,11 +308,27 @@ def fetch_repository(input_dir: Path) -> Tuple[str, str]:
 
         p = run(f"git -C '{input_dir}' rev-parse refs/heads/master", check=True, shell=True, stdout=PIPE)
         head = p.stdout.decode().strip()
-
         msg2(f"Updated input repository from {anchor} to {head}")
+
+        pack_refs(input_dir)
+
         return anchor, head
     except CalledProcessError as e:
         error1(f"Error fetching repository {input_dir}...")
+        raise e
+
+
+def pack_refs(input_dir: Path) -> None:
+    """Pack heads and tags for efficient repository access.
+
+    Args:
+        input_dir (Path): input repository directory.
+    """
+    try:
+        msg1(f"Packing refs in '{input_dir}'...")
+        run(f"git -C '{input_dir}' pack-refs --all", check=True, shell=True, stdout=PIPE)
+    except CalledProcessError as e:
+        error1(f"Error packing refs for repository {input_dir}")
         raise e
 
 

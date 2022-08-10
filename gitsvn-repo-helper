@@ -52,6 +52,8 @@ fetch() {
 	printf "old HEAD: %s\n" "${anchor}" >&2
 	printf "new HEAD: %s\n" "${head}" >&2
 
+	git_pack_refs "${repo}"
+
 	if (( list)); then
 		list_packages_since "${anchor}" "${repo}"
 	else
@@ -79,6 +81,12 @@ clone() {
 		target=$(basename "${src}")
 	fi
 	git clone --mirror "${src}" "${target}"
+	git_pack_refs "${target}"
+}
+
+git_pack_refs() {
+	repo="$1"
+	git -C "${repo}" pack-refs --all
 }
 
 require_args() {
