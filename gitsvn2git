@@ -270,7 +270,7 @@ def parse_input() -> Tuple[Path, Path, List[str], Dict[str, Author]]:
                 if f'refs/heads/packages/{package}' not in package_refs:
                     error1(f"Package ref not found: {package}")
                     continue
-            packages.append(package)
+                packages.append(package)
     else:
         packages = list(map(lambda path: Path(path).name, package_refs))
 
