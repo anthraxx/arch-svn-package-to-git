@@ -8,8 +8,9 @@ usage() {
 		   or: ${BASH_SOURCE[0]} since COMMIT REPO
 		       Returns all packages fetched in the target repo since a specific commit.
 
-		   or: ${BASH_SOURCE[0]} fetch REPO
+		   or: ${BASH_SOURCE[0]} fetch [--list] REPO
 		       Fetches the target repo and prints the old HEAD to be able to query for changed packages.
+		       If --list is passed, print all changed packages instead of commit hashes.
 
 		   or: ${BASH_SOURCE[0]} configure REPO
 		       Configure the target bare repo as mirror and fetch all refs.
@@ -42,16 +43,22 @@ list_packages_since() {
 
 fetch() {
 	repo="$1"
-	anchor="$(git -C "${repo}" rev-parse refs/heads/master)"
-	printf "Current HEAD: %s\n" "${anchor}"
-	printf "Fetching changes, this can take a while...\n"
+	list="$2"
+	anchor="$(git -C "${repo}" rev-parse refs/heads/master)~40"
+	printf "Current HEAD: %s\n" "${anchor}" >&2
+	printf "Fetching changes, this can take a while...\n" >&2
 	git -C "${repo}" fetch origin
 	head="$(git -C "${repo}" rev-parse refs/heads/master)"
-	printf "old HEAD: %s\n" "${anchor}"
-	printf "new HEAD: %s\n" "${head}"
-	if [[ "${head}" != "${anchor}" ]]; then
-		printf "Command to list changed packages: \n"
-		printf "  # %s since %s %s\n" "${BASH_SOURCE[0]}" "${anchor}" "${repo}"
+	printf "old HEAD: %s\n" "${anchor}" >&2
+	printf "new HEAD: %s\n" "${head}" >&2
+
+	if (( list)); then
+		list_packages_since "${anchor}" "${repo}"
+	else
+		if [[ "${head}" != "${anchor}" ]]; then
+			printf "Command to list changed packages: \n"
+			printf "  # %s since %s %s\n" "${BASH_SOURCE[0]}" "${anchor}" "${repo}"
+		fi
 	fi
 }
 
@@ -85,7 +92,14 @@ case $1 in
 	fetch)
 		shift;
 		require_args $# 1
-		fetch "$1"
+		list=0
+		repo="$1"
+		if [[ $1 == --list ]]; then
+			require_args $# 2
+			list=1
+			repo="$2"
+		fi
+		fetch "${repo}" $list
 		;;
 	list)
 		shift;

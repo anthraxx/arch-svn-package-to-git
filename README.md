@@ -105,6 +105,12 @@ gitsvn-repo-helper configure repos/community
 
     parallel gitsvn2git repos/community community-converted ::: $(gitsvn-repo-helper list repos/community)
 
+##### Fetch source repo and re-convert all updated packages:
+
+	gitsvn2git repos/community community-converted --update
+
+	gitsvn-repo-helper fetch --list repos/community | parallel --no-run-if-empty gitsvn2git repos/community community-converted
+
 ##### List bare clone packages:
 
     gitsvn-repo-helper list repos/community
@@ -116,6 +122,10 @@ gitsvn-repo-helper configure repos/community
 ##### Fetch bare clone repo and print previous HEAD:
 
     gitsvn-repo-helper fetch repos/community
+
+##### Fetch bare clone repo and print changed packages:
+
+    gitsvn-repo-helper fetch --list repos/community
 
 ##### Fresh clone of the community repo:
 
