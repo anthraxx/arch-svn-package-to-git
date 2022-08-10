@@ -13,6 +13,11 @@ usage() {
 
 		   or: ${BASH_SOURCE[0]} configure REPO
 		       Configure the target bare repo as mirror and fetch all refs.
+
+		   or: ${BASH_SOURCE[0]} clone REPO [TARGET]
+		       Clones the gitsvn repo as mirror and fetch all refs into the target dir.
+		       REPO can be an url or one of: community, packages
+		       TARGET is an optional path and defaults to the repo basename
 _EOF_
 }
 
@@ -56,6 +61,19 @@ configure() {
 	git -C "${repo}" config --local remote.origin.mirror true
 }
 
+clone() {
+	src="$1"
+	target="$2"
+
+	if [[ $src == community ]] || [[ $src == packages ]]; then
+		src="https://github.com/archlinux/svntogit-$src"
+	fi
+	if [[ -z $target ]]; then
+		target=$(basename "${src}")
+	fi
+	git clone --mirror "${src}" "${target}"
+}
+
 require_args() {
 	if (( $1 < $2 )); then
 		usage
@@ -83,6 +101,11 @@ case $1 in
 		shift;
 		require_args $# 1
 		configure "$1"
+		;;
+	clone)
+		shift;
+		require_args $# 1
+		clone "$1" "$2"
 		;;
 	-h|--help)
 		usage

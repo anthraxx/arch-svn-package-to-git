@@ -28,7 +28,17 @@ The gitsvn checkout must be a bare clone that is setup as a mirror in order
 to make single branch cloning work appropriately and be able to easily fetch
 all branch related refs from the remote.
 
-git config:
+The clone command can be used for a fresh clone:
+```
+gitsvn-repo-helper clone community
+```
+
+Optionally a target directory can be specified:
+```
+gitsvn-repo-helper clone packages /tmp/bare-packages
+```
+
+Otherwise an existing clone needs to have to following git config:
 ```
 [remote "origin"]
 	url = https://github.com/archlinux/svntogit-community
@@ -106,3 +116,7 @@ gitsvn-repo-helper configure repos/community
 ##### Fetch bare clone repo and print previous HEAD:
 
     gitsvn-repo-helper fetch repos/community
+
+##### Fresh clone of the community repo:
+
+    gitsvn-repo-helper clone community
