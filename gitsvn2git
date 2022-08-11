@@ -307,7 +307,7 @@ def fetch_repository(input_dir: Path) -> Tuple[str, str]:
         anchor = p.stdout.decode().strip()
 
         msg1("Fetching input repository, may take a while...")
-        run(f"git -C '{input_dir}' fetch origin", check=True, shell=True)
+        run(f"git -C '{input_dir}' fetch origin --prune --prune-tags", check=True, shell=True)
 
         p = run(f"git -C '{input_dir}' rev-parse refs/heads/master", check=True, shell=True, stdout=PIPE)
         head = p.stdout.decode().strip()

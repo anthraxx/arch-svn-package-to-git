@@ -47,7 +47,7 @@ fetch() {
 	anchor="$(git -C "${repo}" rev-parse refs/heads/master)~40"
 	printf "Current HEAD: %s\n" "${anchor}" >&2
 	printf "Fetching changes, this can take a while...\n" >&2
-	git -C "${repo}" fetch origin
+	git -C "${repo}" fetch origin --prune --prune-tags
 	head="$(git -C "${repo}" rev-parse refs/heads/master)"
 	printf "old HEAD: %s\n" "${anchor}" >&2
 	printf "new HEAD: %s\n" "${head}" >&2
