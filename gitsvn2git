@@ -11,6 +11,9 @@ from tempfile import NamedTemporaryFile
 from typing import List, Dict, Set, Tuple, Optional
 
 
+BRANCH_NAME = "main"
+
+
 class Style:
     """Common console styles."""
 
@@ -729,7 +732,7 @@ def clean_up(package_dir: Path):
     """
     msg2("Cleaning up...")
     try:
-        run("git branch -m master", cwd=package_dir, check=True, shell=True)
+        run(f"git branch -m {BRANCH_NAME}", cwd=package_dir, check=True, shell=True)
 
         shutil.rmtree(package_dir / ".git/refs/original", ignore_errors=True)
         shutil.rmtree(package_dir / ".git/refs/remotes", ignore_errors=True)
