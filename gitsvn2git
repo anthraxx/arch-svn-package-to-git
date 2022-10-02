@@ -179,14 +179,18 @@ def msg3(message: str):
     print(f"{s.BOLD}{s.YELLOW}    ·>{s.RESET}{s.BOLD} {message}{s.RESET}")
 
 
-def error1(error: str):
+def error1(error: str, log_error: bool = True, topic: str = 'script'):
     """Pretty format first level error message.
 
     Args:
         error (str): message to format.
+        log_error (bool): wheather to log the error to a file.
+        topic (str): the pkgname responsible.
     """
     s = Style()
     print(f"{s.BOLD}{s.RED}==>{s.RESET}{s.BOLD} {error}{s.RESET}")
+    if log:
+        log(f'{topic}: {error}\n')
     if os.environ.get('GITSVN2GIT_BREAKPOINT_ON_ERROR'):
         breakpoint()
 
@@ -243,6 +247,17 @@ def warn3(warn: str, pedantic: bool = False):
 
     s = Style()
     print(f"{s.BOLD}{s.YELLOW}    ·>{s.RESET}{s.BOLD} {warn}{s.RESET}")
+
+
+def log(message: str, filename: str = 'gitsvn2git.log'):
+    """Log message to file for later investigation.
+
+    Args:
+        message (str): message to log.
+        filename (str): filename to log to (default gitsvn2git.log)
+    """
+    with open(filename, 'a') as f:
+        f.write(f'{message}')
 
 
 def parse_input() -> Tuple[Path, Path, List[str], Dict[str, Author]]:
@@ -338,7 +353,7 @@ def pack_refs(input_dir: Path) -> None:
         msg1(f"Packing refs in '{input_dir}'...")
         run(f"git -C '{input_dir}' pack-refs --all", check=True, shell=True, stdout=PIPE)
     except CalledProcessError as e:
-        error1(f"Error packing refs for repository {input_dir}")
+        error1(f"Error packing refs for repository {input_dir}", topic=input_dir.name)
         raise e
 
 
@@ -393,7 +408,7 @@ def clone_repository(input_dir: Path, package_dir: Path):
             shell=True,
         )
     except CalledProcessError as e:
-        error1(f"Error cloning repository to {target_dir}...")
+        error1(f"Error cloning repository to {target_dir}...", topic=package_dir.name)
         raise e
 
 
@@ -414,7 +429,7 @@ def filter_subdirectory(package_dir: Path, subdirectory: Path) -> None:
             cwd=package_dir,
         )
     except CalledProcessError as e:
-        error1(f"Error filtering subdirectory '{subdirectory}'...")
+        error1(f"Error filtering subdirectory '{subdirectory}'...", topic=package_dir.name)
         raise e
 
 
@@ -555,7 +570,7 @@ def get_releases(
             debug3(f'Found release: {release}')
         return releases
     except CalledProcessError as e:
-        error1("Error getting releases...")
+        error1("Error parsing releases from log...", topic=package_dir.name)
         raise e
 
 
@@ -655,7 +670,7 @@ def rewrite_history(package_dir: Path):
             stdout=PIPE,
         )
     except CalledProcessError as e:
-        error1("Error rewriting history...")
+        error1("Error rewriting history...", topic=package_dir.name)
         raise e
 
 
@@ -672,7 +687,7 @@ def tag_releases(package_dir: Path, releases: List[Release], authors: Dict[str, 
     for release in releases:
         release_map[release.file_hash] = release
 
-    released = {}
+    released: Dict[str, Release] = {}
     try:
         p = run(
             "git log --pretty='%h'",
@@ -682,31 +697,36 @@ def tag_releases(package_dir: Path, releases: List[Release], authors: Dict[str, 
             stdout=PIPE,
         )
         commits = p.stdout.decode().splitlines()
-        # Reverse tagging order to left the tag in the latest commit
-        for commit in commits:
-            pkgbuild = get_pkgbuild(package_dir, "PKGBUILD", commit)
-            if not pkgbuild:
-                continue
+    except CalledProcessError as e:
+        error1("Error getting commit history", topic=package_dir.name)
+        raise e
 
-            md5 = hashlib.md5(pkgbuild)
-            file_hash = md5.hexdigest()
+    # Reverse tagging order to left the tag in the latest commit
+    for commit in commits:
+        pkgbuild = get_pkgbuild(package_dir, "PKGBUILD", commit)
+        if not pkgbuild:
+            continue
 
-            if file_hash not in release_map:
-                continue
+        md5 = hashlib.md5(pkgbuild)
+        file_hash = md5.hexdigest()
 
-            release = release_map[file_hash]
-            version = release.version
+        if file_hash not in release_map:
+            continue
 
-            # Set git specific environment vars to reflect archrelease information
-            author = authors[release.name]
-            env = os.environ.copy()
-            env['GIT_AUTHOR_DATE'] = release.date
-            env['GIT_COMMITTER_DATE'] = release.date
-            env['GIT_AUTHOR_NAME'] = author.name
-            env['GIT_COMMITTER_NAME'] = author.name
-            env['GIT_AUTHOR_EMAIL'] = author.email
-            env['GIT_COMMITTER_EMAIL'] = author.email
+        release = release_map[file_hash]
+        version = release.version
 
+        # Set git specific environment vars to reflect archrelease information
+        author = authors[release.name]
+        env = os.environ.copy()
+        env['GIT_AUTHOR_DATE'] = release.date
+        env['GIT_COMMITTER_DATE'] = release.date
+        env['GIT_AUTHOR_NAME'] = author.name
+        env['GIT_COMMITTER_NAME'] = author.name
+        env['GIT_AUTHOR_EMAIL'] = author.email
+        env['GIT_COMMITTER_EMAIL'] = author.email
+
+        try:
             run(
                 f"git tag -f {version.tag} {commit} -m 'Package release {version}'",
                 check=True,
@@ -714,12 +734,13 @@ def tag_releases(package_dir: Path, releases: List[Release], authors: Dict[str, 
                 shell=True,
                 env=env,
             )
-            release.target_commit = commit
-            released[version.tag] = release
-            debug3(f'Tagged {commit} for release {release}')
-    except CalledProcessError as e:
-        error1("Error tagging releases...")
-        raise e
+        except CalledProcessError:
+            error1(f"Error tagging release {version.tag} for pkgver {version}", topic=package_dir.name)
+            continue
+
+        release.target_commit = commit
+        released[version.tag] = release
+        debug3(f'Tagged {commit} for release {release}')
 
     for release in releases:
         if release.version.tag in released:
@@ -766,7 +787,7 @@ def clean_up(package_dir: Path):
             shell=True,
         )
     except CalledProcessError as e:
-        error1("Error cleaning up...")
+        error1("Error cleaning up...", topic=package_dir.name)
         raise e
 
 
