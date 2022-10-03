@@ -627,6 +627,7 @@ def rewrite_history(package_dir: Path):
                 'message = re.sub(b"^upgpkg: .+\\-\\d+[:;]? +", b"", message)\n'
                 '# replace pkgbase in upgpkg messages as we have one repo per pkgbase\n'
                 'message = re.sub(b"^(upgpkg: ).+ (.+\\-\\d)", b"\\\\1\\\\2", message)\n'
+                'message = re.sub(b"^(addpkg: ).+ (.+\\-\\d)", b"\\\\1\\\\2", message)\n'
                 'if not message.strip():\n'
                 '    message = b"package update"\n'
                 "return message.strip()'"
