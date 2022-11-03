@@ -718,6 +718,9 @@ def tag_releases(package_dir: Path, releases: List[Release], authors: Dict[str, 
         version = release.version
 
         # Set git specific environment vars to reflect archrelease information
+        if release.name not in authors:
+            error1(f"Error fetching author info for {release.name}", topic=package_dir.name)
+            continue
         author = authors[release.name]
         env = os.environ.copy()
         env['GIT_AUTHOR_DATE'] = release.date
