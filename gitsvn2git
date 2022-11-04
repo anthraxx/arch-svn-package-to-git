@@ -4,6 +4,7 @@ import os
 import shutil
 import sys
 import re
+import traceback
 
 from pathlib import Path
 from subprocess import CalledProcessError, PIPE, run
@@ -809,9 +810,13 @@ if __name__ == "__main__":
             msg2("Removing old checkout...")
             shutil.rmtree(package_dir)
 
-        clone_repository(input_dir, package_dir)
-        releases = get_releases(package_dir)
-        filter_subdirectory(package_dir, Path("trunk"))
-        rewrite_history(package_dir)
-        tag_releases(package_dir, releases, authors)
-        clean_up(package_dir)
+        try:
+            clone_repository(input_dir, package_dir)
+            releases = get_releases(package_dir)
+            filter_subdirectory(package_dir, Path("trunk"))
+            rewrite_history(package_dir)
+            tag_releases(package_dir, releases, authors)
+            clean_up(package_dir)
+        except Exception as e:
+            error1(f'Uncaught exception: {traceback.format_exception(e)}', topic=package)
+            raise e
