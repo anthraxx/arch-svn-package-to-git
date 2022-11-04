@@ -547,6 +547,7 @@ def get_releases(
                 error3(f'Unknown archrelease type: {subject}')
                 continue
 
+            pkgbuild = None
             for release_repo in release_repos:
                 pkgbuild_file = f'repos/{release_repo}/PKGBUILD'
                 if pkgbuild := get_pkgbuild(package_dir, pkgbuild_file, commit_hash):
