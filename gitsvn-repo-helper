@@ -23,9 +23,10 @@ _EOF_
 }
 
 list_packages() {
-	repo="$1"
-	grep refs/heads/packages/ "${repo}"/packed-refs | \
-		sed -E 's|.+ refs/heads/packages/(.+)|\1|'
+	for repo in "$@"; do
+		grep refs/heads/packages/ "${repo}"/packed-refs | \
+			sed -E 's|.+ refs/heads/packages/(.+)|\1|'
+	done
 }
 
 list_packages_since() {
@@ -112,7 +113,7 @@ case $1 in
 	list)
 		shift;
 		require_args $# 1
-		list_packages "$1"
+		list_packages "$@"
 		;;
 	since)
 		shift;
