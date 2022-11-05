@@ -19,6 +19,11 @@ usage() {
 		       Clones the gitsvn repo as mirror and fetch all refs into the target dir.
 		       REPO can be an url or one of: community, packages
 		       TARGET is an optional path and defaults to the repo basename
+
+		   or: ${BASH_SOURCE[0]} clean PKGDIR REPOS...
+		       Cleans the directory containing packages by deleting all that are not in any of the repos.
+		       PKGDIR the directory containing all converted packages
+		       REPOS... all available repos to search packages in
 _EOF_
 }
 
@@ -85,6 +90,20 @@ clone() {
 	git_pack_refs "${target}"
 }
 
+clean() {
+	pkgdir=$1
+	shift
+	for pkg in $(diff --unified=10000 \
+		--minimal \
+		<(list_packages "$@" | sort -u) \
+		<(find "$pkgdir" -mindepth 1 -maxdepth 1 -type d -printf '%f\n' | sort -u) \
+		| tail +4 \
+		| grep -E '^\+' \
+		| sed -E 's/\+(.+)/\1/'); do
+		rm -rfvi "${pkgdir:?}/${pkg:?}"
+	done
+}
+
 git_pack_refs() {
 	repo="$1"
 	git -C "${repo}" pack-refs --all
@@ -129,6 +148,13 @@ case $1 in
 		shift;
 		require_args $# 1
 		clone "$1" "$2"
+		;;
+	clean)
+		shift;
+		require_args $# 2
+		pkgdir=$1
+		shift
+		clean "$pkgdir" "$@"
 		;;
 	-h|--help)
 		usage

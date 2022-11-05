@@ -12,6 +12,7 @@ collection and history/content rewrite.
 - bash
 - findutils
 - coreutils
+- diffutils
 - grep
 
 ### Rewrites:
@@ -130,3 +131,7 @@ gitsvn-repo-helper configure repos/community
 ##### Fresh clone of the community repo:
 
     gitsvn-repo-helper clone community
+
+##### Clean up old converted packages that were removed from the repos:
+
+    gitsvn-repo-helper clean repos/packages/ repos/svntogit/community/ repos/svntogit/packages/
