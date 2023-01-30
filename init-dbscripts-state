@@ -1,0 +1,132 @@
+#!/bin/bash
+
+usage() {
+	local -r COMMAND=${BASH_SOURCE[0]##*/}
+	cat <<- _EOF_
+		Usage: ${COMMAND} [GIT_REPOS_DIR]
+_EOF_
+}
+
+if (( $# < 1 )); then
+	usage
+	exit 1
+fi
+
+#trap 'rm -rf $WORKDIR' EXIT INT TERM QUIT
+WORKDIR=$(mktemp -d --tmpdir "${0##*/}.XXXXXXXXXX")
+
+ERROR_ON_FAILURE=1
+GIT_PACKAGES_CACHE="$1"
+PACMAN_CACHE_DIR="${WORKDIR}/pacman-cache"
+GIT_STATE_REPO="${WORKDIR}/state"
+
+echo "workdir: ${WORKDIR}"
+
+
+update_pacman_repo_cache() {
+	mkdir -p "${PACMAN_CACHE_DIR}"
+	echo "Updating pacman database cache"
+	fakeroot -- pacman --config "/usr/share/devtools/pacman-multilib-staging.conf" \
+		--dbpath "${PACMAN_CACHE_DIR}" \
+		-Sy
+}
+
+get_tag_from_pkgver() {
+	local pkgver=$1
+	local tag=${pkgver}
+
+	tag=${tag/:/-}
+	tag=${tag//~/.}
+	echo "${tag}"
+}
+
+vcs_commit() {
+	local commit_message=$1
+	local author=$2
+	local date=$3
+	local name email
+
+	if ! name=$(echo "${author}"|sed -E 's/(.+) (<.+>)/\1/'); then
+		echo "Failed to extract name from author line"
+		exit 1
+	fi
+	if ! email=$(echo "${author}"|sed -E 's/(.+) (<.+>)/\2/'); then
+		echo "Failed to extract email from author line"
+		exit 1
+	fi
+
+	date=$(date --date="@${date}")
+	export GIT_COMMITTER_DATE="${date}"
+	export GIT_AUTHOR_DATE="${date}"
+
+	git -c user.name="${name}" \
+		-c user.email="${email}" \
+		-C "${GIT_STATE_REPO}" \
+		commit -m "${commit_message}"
+}
+
+vcs_update_package() {
+	local pkgbase="$1"
+	local pkgver="$2"
+	local repo="$3"
+	local arch="$4"
+	local date="$5"
+	local author="$6"
+	local dest="${repo}-${arch}"
+	local gittag
+	gittag="$(get_tag_from_pkgver "${pkgver}")"
+
+	if ! rev=$(git -C "${GIT_PACKAGES_CACHE}/${pkgbase}" rev-parse "${gittag}"); then
+		rev="unknown"
+		if (( ERROR_ON_FAILURE )); then
+			return 1
+		fi
+	fi
+
+	mkdir -p "${GIT_STATE_REPO}/${dest}"
+	printf '%s %s %s %s\n' \
+		"${pkgbase}" \
+		"${pkgver}" \
+		"${gittag}" \
+		"${rev}" \
+		> "${GIT_STATE_REPO}/${dest}/${pkgbase}"
+
+	if ! git -C "${GIT_STATE_REPO}" status --porcelain | grep -q .; then
+		echo "Skipping existing pkgbase"
+		return 0
+	fi
+
+	git -C "${GIT_STATE_REPO}" add "${GIT_STATE_REPO}/${dest}/${pkgbase}"
+	if ! vcs_commit "update ${pkgbase} to ${pkgver} in ${repo} [${arch}]" "${author}" "${date}"; then
+		return 1
+	fi
+}
+
+update_pacman_repo_cache
+
+cp /usr/share/devtools/pacman-multilib-staging.conf "${WORKDIR}/pacman.conf"
+sed -E "s|#DBPath.+|DBPath = ${WORKDIR}/pacman-cache/|" \
+	-i "${WORKDIR}/pacman.conf"
+
+git init "${GIT_STATE_REPO}"
+pushd "${GIT_STATE_REPO}" || exit 1
+
+while IFS= read -r line; do
+	read -ra arr <<<"$line"
+	builddate=${arr[0]}
+	pkgbase=${arr[1]}
+	pkgname=${arr[2]}
+	pkgver=${arr[3]}
+	repo=${arr[4]}
+	arch=${arr[5]}
+	author="${arr[*]:6:42}"
+	gittag=$(get_tag_from_pkgver "${pkgver}")
+
+	printf "%s -> %s ; %s ; %s %s | %s\n" "${pkgbase}" "${pkgname}" "${pkgver}" "${repo}" "${arch}" "${author}"
+	if ! vcs_update_package "${pkgbase}" "${pkgver}" "${repo}" "${arch}" "${builddate}" "${author}"; then
+		echo "Failed to commit ${pkgbase} to ${pkgver} in ${repo} ${arch} for ${author}"
+		exit 1
+	fi
+done < <(expac --config "${WORKDIR}/pacman.conf" --timefmt='%s' -S '%b %e %n %v %r %a %p'|sort -n)
+
+echo "workdir: ${WORKDIR}"
