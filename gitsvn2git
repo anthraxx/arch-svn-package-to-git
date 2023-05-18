@@ -538,11 +538,15 @@ def get_releases(
             release_repos: List[str]
             if subject.startswith('copy trunk to '):
                 release_repos = subject.split('copy trunk to ')[1].split(', ')
+            elif subject.startswith('copy kde-unstable to '):
+                release_repos = subject.split('copy kde-unstable to ')[1].split(', ')
+            elif subject.startswith('copy gnome-unstable to '):
+                release_repos = subject.split('copy gnome-unstable to ')[1].split(', ')
             elif subject.startswith('new repo '):
                 release_repos = subject.split('new repo ')[1].split(', ')
             elif subject.startswith('New repo '):
                 release_repos = subject.split('New repo ')[1].split(', ')
-            elif subject.startswith('remove ') or subject.startswith('copy kde-'):
+            elif subject.startswith('remove '):
                 continue
             else:
                 error3(f'Unknown archrelease type: {subject}')
