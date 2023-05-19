@@ -669,6 +669,8 @@ def rewrite_history(package_dir: Path):
                 "--path-glob '*.log' "
                 "--path-glob '*.sig' "
                 "--path-glob '*.sign' "
+                "--path-glob 'botan.key' "
+                "--path-glob 'public.key' "
                 "--path-regex '^[^/]+\\.asc$' "
             ),
             check=True,
